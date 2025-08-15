@@ -1,0 +1,119 @@
+{
+  "columns": {
+    "GENDER": {
+      "type": "categorical",
+      "values": [
+        "M",
+        "F"
+      ]
+    },
+    "AGE": {
+      "type": "numeric",
+      "min": 2.0,
+      "max": 111.0,
+      "max_decimal_places": 0
+    },
+    "RACE": {
+      "type": "categorical",
+      "values": [
+        "white",
+        "black",
+        "other",
+        "asian",
+        "native",
+        "hawaiian"
+      ]
+    },
+    "ETHNICITY": {
+      "type": "categorical",
+      "values": [
+        "hispanic",
+        "nonhispanic"
+      ]
+    },
+    "encounter_count": {
+      "type": "numeric",
+      "min": 5.0,
+      "max": 1091.0,
+      "max_decimal_places": 0
+    },
+    "num_procedures": {
+      "type": "numeric",
+      "min": 0.0,
+      "max": 2309.0,
+      "max_decimal_places": 0
+    },
+    "num_medications": {
+      "type": "numeric",
+      "min": 0.0,
+      "max": 4707.0,
+      "max_decimal_places": 0
+    },
+    "num_immunizations": {
+      "type": "numeric",
+      "min": 0.0,
+      "max": 40.0,
+      "max_decimal_places": 0
+    },
+    "num_allergies": {
+      "type": "numeric",
+      "min": 0.0,
+      "max": 17.0,
+      "max_decimal_places": 0
+    },
+    "num_devices": {
+      "type": "numeric",
+      "min": 0.0,
+      "max": 137.0,
+      "max_decimal_places": 0
+    },
+    "asthma_flag": {
+      "type": "numeric",
+      "min": 0.0,
+      "max": 1.0,
+      "max_decimal_places": 0
+    },
+    "stroke_flag": {
+      "type": "numeric",
+      "min": 0.0,
+      "max": 1.0,
+      "max_decimal_places": 0
+    },
+    "obesity_flag": {
+      "type": "numeric",
+      "min": 0.0,
+      "max": 1.0,
+      "max_decimal_places": 0
+    },
+    "depression_flag": {
+      "type": "numeric",
+      "min": 0.0,
+      "max": 1.0,
+      "max_decimal_places": 0
+    },
+    "mean_systolic_bp": {
+      "type": "numeric",
+      "min": 48.41,
+      "max": 166.76,
+      "max_decimal_places": 2
+    },
+    "mean_diastolic_bp": {
+      "type": "numeric",
+      "min": 20.91,
+      "max": 120.8,
+      "max_decimal_places": 2
+    },
+    "mean_bmi": {
+      "type": "numeric",
+      "min": 5.87,
+      "max": 74.01,
+      "max_decimal_places": 2
+    },
+    "mean_weight": {
+      "type": "numeric",
+      "min": 6.31,
+      "max": 167.96,
+      "max_decimal_places": 2
+    }
+  }
+}

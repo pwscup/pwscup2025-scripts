@@ -1,1 +1,3 @@
-
+- `gen_ans.py`：Ai.csv と Bi.csv を入力し、Bi.csvのレコードと一致するAi.csvの行を1とする1列の CSV ファイル（正解データ）Zi.csv を出力
+- `check_ans.py`：Zi.csv と Fij.csv を入力し、ともに値が1となっている行番号（正解）と正解数を出力
+- 

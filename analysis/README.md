@@ -122,7 +122,7 @@
         - `eval_metric="logloss"`
         - `tree_method="hist"`
         - 主要なハイパーパラメータは引数で変更可能（既定：`n_estimators=600`, `max_depth=6`, `learning_rate=0.05`, `subsample=0.9`, `colsample_bytree=0.9`）
-    - 早期終了はコンストラクタで `early_stopping_rounds=50` を指定し、`fit` の `eval_set=\[(X_val, y_val)\] を監視
+    - 早期終了はコンストラクタで `early_stopping_rounds=50` を指定し、`fit` の `eval_set=\[(X_val, y_val)\]` を監視
         - 改善が止まると停止
 - 学習後の評価と出力（ファイル保存）：
     - 検証セットで `predict_proba` を 0.5 で二値化し、Validation Accuracy を標準出力
@@ -147,7 +147,7 @@
         - `learner.objective.name == "binary:logistic"`
         - `learner.gradient_booster.name == "gbtree"`
         - `learner.gradient_booster.model.trees`: 配列長 ≥ 1
-        - `learner.learner_model_param.num_feature`: **数値（文字列可）**で、`len(attributes.feature_names を復元した配列)` と一致
+        - `learner.learner_model_param.num_feature`: 数値（文字列可）で、`len(attributes.feature_names を復元した配列)` と一致
     - 一貫性チェック（`validate_model_json.py` でチェック可能）
         1. `attributes.feature_names` を `json.loads()` で配列に復元できる
         2. 復元配列の長さと `learner.learner_model_param.num_feature` が一致

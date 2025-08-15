@@ -130,7 +130,7 @@
     - attributes にメタ情報を埋め込み：
         - `feature_names`：学習に使った列名リスト（JSON 文字列）
         - `target`：目的変数名
-- JSONファイル仕様（最小構成のサンプルファイル `sample_minimum_model.json` 参照）
+- JSONファイル仕様（サンプルファイル `sample_HI_10K_ML.json` 参照）
     - 共通
         - 文字コード：UTF-8
         - 形式：1つのJSONオブジェクト（末尾カンマ不可）

@@ -1,8 +1,8 @@
 # `ano.py`：ランダム化処理ベースのサンプル匿名化
 - 概要：CSVファイルを入力して、二値の列は確率反転、カテゴリ列は確率的ランダム置換、数値列はノイズ付加を行う。確率やノイズ範囲のパラメータ値はソースコードの値を直接変更できる。
 - 入力：ヘッダー付き CSV
-    - 書式：`python3 ano.py <input.csv> <output.csv> \[--seed SEED\]`
-    - 実行例：`python3 ano.py input.csv output.csv --seed 42`
+    - 書式：`python3 ano.py <Bi.csv> <Ci.csv> \[--seed SEED\]`
+    - 実行例：`python3 ano.py Bi.csv Ci.csv --seed 42`
     - 引数：
         - `--seed`：値を入れると乱数を固定でき再現性ある出力になる（内部で `numpy` と `random` の両方に設定）  
 - 出力：ランダム化されたヘッダー付き CSV（レコードの順序は変化しないので注意。レコードの順序のランダムな置き換えは `randomshuffle_rows.py` を使う）

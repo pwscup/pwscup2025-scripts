@@ -153,3 +153,30 @@
         2. 復元配列の長さと `learner.learner_model_param.num_feature` が一致
         3. `attributes.target` は非空文字列
         4. `version` は存在し、`xgbt_pred.py` 実行中の xgboost と比較可能（実行時チェックでモデル側が新しければエラー） 
+
+# `xgbt_pred` : XGBoostで学習したモデルを使って推論
+- XGBoost の学習済みモデル JSON と テスト用 CSV を受け取り、前処理・特徴量整形・モデル読み込み・推論を行い、Accuracy（正解率）を出力。
+- 使い方の例
+  - `python3 xgbt_pred.py model.json --test-csv test.csv --threshold 0.4`
+- 入力：XGBoost の学習済みモデル JSON（`xgbt_train.py` が `Booster.save_model()` で出力した JSON ファイルを想定）とテスト用 CSV
+    - 実行：`python3 xgbt_pred.py <model.json> --test-csv TEST_CSV \[--target TARGET\] \[--threshold THRESHOLD\]
+        - `--test-csv`：ヘッダー付きテスト用データ CSV ファイル
+        - `--target`：目的変数（既定 stroke_flag、0/1 必須）
+        - `--threshold`：1クラス判定の確率閾値（既定値 0.5）
+- 出力：`Accuracy (test, threshold=...) : <小数>` の 1 行のみ。
+- 前処理と特徴量整形
+    1. テスト CSV を `dtype=str` で読み込み、`--target` もしくは attributes の `target` 列の値が 0/1 かどうかチェック
+    2. 説明変数は以下で数値化:
+        - 数値化可能な列は `to_numeric`
+        - 非数値列は `get_dummies(drop_first=True)` で OneHot 化
+        - ゼロ分散列（ユニーク数 ≤ 1）は削除
+        - 列名は昇順で固定、型は `float32` に統一
+    3. モデルの `feature_names` が取得できた場合、テスト特徴量をその列順に reindex する。不足列は 0 で補完、余分列は削除し、学習時スキーマと完全一致させる。 
+- モデル読み込みと推論
+    - `Booster.load_model(model_json)` でモデルを読み込み
+    - `xgb.DMatrix` は 列名付き（`feature_names` を渡す、または `X_te` の列名をそのまま使用）で作成し、XGBoost の `validate_features` による整合チェック
+    - `booster.predict` の確率を `--threshold` で 0/1 に変換し、Accuracy を算出・表示
+- エラー処理・トラブルシュート
+    - 「training data did not have the following fields: ...」：DMatrix に列名が渡っていない／reindex 不足。モデルの `feature_names` を正しく取り出し、テスト側をその順で reindex してから DMatrix を列名付きで作成してください
+    - `map::at` / `Invalid cast, from Null to Object`：モデル JSON が壊れている、または XGBoost が出力した純正形式でない可能性あり。`save_model()` 直後のファイルを無編集で使用してください。実行環境の xgboost と version の整合も確認してください
+    - 「Target column not found / must be 0/1」：テスト CSV に目的変数が無い／0/1 以外が混入。列名・値を修正、または `--target` で正しい列名を指定してください 

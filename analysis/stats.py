@@ -39,27 +39,14 @@ CAT_COL_ORDER = ["GENDER", "RACE", "ETHNICITY", "AGE_GROUP"] + EXPECTED_FLAGS
 # count_ratio を出さない
 STATS_ORDER = ["mean", "std", "25%", "50%", "75%"]
 
-# ====== I/O ======
-if len(sys.argv) < 2:
-    print("Usage: python3 stats.py <input.csv>")
-    sys.exit(1)
-csv_file = sys.argv[1]
-if not os.path.isfile(csv_file):
-    print(f"Error: File {csv_file} not found")
-    sys.exit(1)
-
-df_raw = pd.read_csv(csv_file, dtype=str)
-
 # ====== 補助関数 ======
 def to_float(s: pd.Series) -> pd.Series:
     return pd.to_numeric(s, errors="coerce")
 
-def minmax_normalize(v: pd.Series) -> pd.Series:
-    x = to_float(v)
-    mn, mx = x.min(skipna=True), x.max(skipna=True)
-    if pd.isna(mn) or pd.isna(mx) or mn == mx:
-        return x * 0.0
-    return (x - mn) / (mx - mn)
+# ====== データ整形 ======
+def norm_flag(x: pd.Series) -> pd.Series:
+    v = pd.to_numeric(x, errors="coerce")
+    return v.where(v.isin([0,1]), np.nan)
 
 def build_age_group(age_series: pd.Series) -> pd.Series:
     lab = EXPECTED_CATEGORICAL_LEVELS["AGE_GROUP"]
@@ -97,62 +84,16 @@ def norm_ethnicity(x: pd.Series) -> pd.Series:
           np.where(s.str.contains("hisp"), "hispanic", "unknown"))
     return pd.Series(out, index=x.index, dtype=object)
 
-def norm_flag(x: pd.Series) -> pd.Series:
-    v = pd.to_numeric(x, errors="coerce")
-    return v.where(v.isin([0,1]), np.nan)
-
-# ====== データ整形 ======
-df = df_raw.copy()
-
-# 数値列（固定順）
-for col in EXPECTED_NUMERIC:
-    if col not in df.columns:
-        df[col] = np.nan
-    df[col] = to_float(df[col])
-
-# フラグ列（0/1）
-for col in EXPECTED_FLAGS:
-    if col not in df.columns:
-        df[col] = np.nan
-    df[col] = norm_flag(df[col])
-
-# カテゴリ列の正規化
-if "GENDER" not in df.columns:
-    df["GENDER"] = np.nan
-df["GENDER"] = norm_gender(df["GENDER"])
-
-if "RACE" not in df.columns:
-    df["RACE"] = np.nan
-df["RACE"] = norm_race(df["RACE"])
-
-if "ETHNICITY" not in df.columns:
-    df["ETHNICITY"] = np.nan
-df["ETHNICITY"] = norm_ethnicity(df["ETHNICITY"])
-
-# AGE_GROUP の生成（AGE が無い/欠損でもOK）
-df["AGE_GROUP"] = build_age_group(df["AGE"]) if "AGE" in df.columns else pd.Series(np.nan, index=df.index)
-
 # ====== 1) 数値列の統計（min-max 正規化, 固定行列） ======
-df_norm = df[EXPECTED_NUMERIC].apply(minmax_normalize, axis=0)
-
-desc = df_norm.describe(percentiles=[0.25, 0.5, 0.75])
-desc = desc.loc[["mean","std","25%","50%","75%"]]
-desc = desc.reindex(columns=EXPECTED_NUMERIC)
-
-print("\n=== 数値列の統計量（min-max正規化後, 0〜1・min/max除外・固定スキーマ） ===")
-with pd.option_context("display.max_columns", None, "display.width", None, "display.float_format", lambda x: f"{x:.6g}"):
-    print(desc)
-
-# ====== 2) 数値×数値 相関（固定スキーマ） ======
-corr = df[EXPECTED_NUMERIC].astype(float).corr()
-corr = corr.reindex(index=EXPECTED_NUMERIC, columns=EXPECTED_NUMERIC)
-
-print("\n--- 相関行列（Pearson, 固定スキーマ） ---")
-with pd.option_context("display.max_columns", None, "display.width", None, "display.float_format", lambda x: f"{x:.6g}"):
-    print(corr)
+def minmax_normalize(v: pd.Series) -> pd.Series:
+    x = to_float(v)
+    mn, mx = x.min(skipna=True), x.max(skipna=True)
+    if pd.isna(mn) or pd.isna(mx) or mn == mx:
+        return x * 0.0
+    return (x - mn) / (mx - mn)
 
 # ====== 3) カテゴリ列の集計（比率のみ、ラベルは ratio） ======
-def categorical_summary_fixed(colname: str) -> pd.DataFrame:
+def categorical_summary_fixed(df: pd.DataFrame, colname: str) -> pd.DataFrame:
     levels = EXPECTED_CATEGORICAL_LEVELS[colname]
     s = df[colname]
     vc = s.value_counts(dropna=False)
@@ -160,15 +101,8 @@ def categorical_summary_fixed(colname: str) -> pd.DataFrame:
     ratio = (count / len(df)).astype(float)
     return pd.DataFrame({"ratio": ratio})
 
-print("\n=== カテゴリ列の集計（固定レベル順・比率のみ） ===")
-for cat in CAT_COL_ORDER:
-    print(f"\n--- {cat} ---")
-    tbl = categorical_summary_fixed(cat)
-    with pd.option_context("display.max_columns", None, "display.width", None, "display.float_format", lambda x: f"{x:.6g}"):
-        print(tbl)
-
 # ====== 4) カテゴリ×数値（min-max 正規化、固定レベル×固定統計：count系は出さない） ======
-def group_table_fixed(cat_col: str) -> pd.DataFrame:
+def group_table_fixed(df: pd.DataFrame, df_norm: pd.DataFrame, cat_col: str) -> pd.DataFrame:
     levels = EXPECTED_CATEGORICAL_LEVELS[cat_col]
     s = df[cat_col]  # すでに正規化済み
 
@@ -187,15 +121,8 @@ def group_table_fixed(cat_col: str) -> pd.DataFrame:
     out = out.reindex(index=levels)
     return out
 
-print("\n=== カテゴリ×数値の要約統計（min-max正規化後, 固定レベル×固定統計） ===")
-for cat in CAT_COL_ORDER:
-    print(f"\n--- Group by: {cat} ---")
-    tbl = group_table_fixed(cat)
-    with pd.option_context("display.max_columns", None, "display.width", None, "display.float_format", lambda x: f"{x:.6g}"):
-        print(tbl)
-
 # ====== 5) カテゴリ×カテゴリのクロス集計（★比率 0〜1 のみ出力・固定レベル） ======
-def crosstab_ratio_fixed(a: str, b: str) -> pd.DataFrame:
+def crosstab_ratio_fixed(df: pd.DataFrame, a: str, b: str) -> pd.DataFrame:
     levels_a = EXPECTED_CATEGORICAL_LEVELS[a]
     levels_b = EXPECTED_CATEGORICAL_LEVELS[b]
     s1 = df[a]
@@ -205,9 +132,92 @@ def crosstab_ratio_fixed(a: str, b: str) -> pd.DataFrame:
     ratio = (ct / len(df)).astype(float)
     return ratio
 
-print("\n=== カテゴリ×カテゴリのクロス集計（全体比 0〜1・固定レベル） ===")
-for a, b in combinations(CAT_COL_ORDER, 2):
-    print(f"\n--- Crosstab (ratio): {a} × {b} ---")
-    ratio = crosstab_ratio_fixed(a, b)
+def main():
+    # ====== I/O ======
+    if len(sys.argv) < 2:
+        print("Usage: python3 stats.py <input.csv>")
+        sys.exit(1)
+    csv_file = sys.argv[1]
+    
+    if not os.path.isfile(csv_file):
+        print(f"Error: File {csv_file} not found")
+        sys.exit(1)
+
+    df_raw = pd.read_csv(csv_file, dtype=str)
+
+    # ====== データ整形 ======
+    df = df_raw.copy()
+
+    # 数値列（固定順）
+    for col in EXPECTED_NUMERIC:
+        if col not in df.columns:
+            df[col] = np.nan
+        df[col] = to_float(df[col])
+
+    # フラグ列（0/1）
+    for col in EXPECTED_FLAGS:
+        if col not in df.columns:
+            df[col] = np.nan
+        df[col] = norm_flag(df[col])
+
+    # カテゴリ列の正規化
+    if "GENDER" not in df.columns:
+        df["GENDER"] = np.nan
+    df["GENDER"] = norm_gender(df["GENDER"])
+
+    if "RACE" not in df.columns:
+        df["RACE"] = np.nan
+    df["RACE"] = norm_race(df["RACE"])
+
+    if "ETHNICITY" not in df.columns:
+        df["ETHNICITY"] = np.nan
+    df["ETHNICITY"] = norm_ethnicity(df["ETHNICITY"])
+
+    # AGE_GROUP の生成（AGE が無い/欠損でもOK）
+    df["AGE_GROUP"] = build_age_group(df["AGE"]) if "AGE" in df.columns else pd.Series(np.nan, index=df.index)
+
+    # ====== 1) 数値列の統計（min-max 正規化, 固定行列） ======
+    df_norm = df[EXPECTED_NUMERIC].apply(minmax_normalize, axis=0)
+    
+    desc = df_norm.describe(percentiles=[0.25, 0.5, 0.75])
+    desc = desc.loc[["mean","std","25%","50%","75%"]]
+    desc = desc.reindex(columns=EXPECTED_NUMERIC)
+    
+    print("\n=== 数値列の統計量（min-max正規化後, 0〜1・min/max除外・固定スキーマ） ===")
     with pd.option_context("display.max_columns", None, "display.width", None, "display.float_format", lambda x: f"{x:.6g}"):
-        print(ratio)
+        print(desc)
+
+    # ====== 2) 数値×数値 相関（固定スキーマ） ======
+    corr = df[EXPECTED_NUMERIC].astype(float).corr()
+    corr = corr.reindex(index=EXPECTED_NUMERIC, columns=EXPECTED_NUMERIC)
+    
+    print("\n--- 相関行列（Pearson, 固定スキーマ） ---")
+    with pd.option_context("display.max_columns", None, "display.width", None, "display.float_format", lambda x: f"{x:.6g}"):
+        print(corr)
+
+    # ====== 3) カテゴリ列の集計（比率のみ、ラベルは ratio） ======
+    print("\n=== カテゴリ列の集計（固定レベル順・比率のみ） ===")
+    for cat in CAT_COL_ORDER:
+        print(f"\n--- {cat} ---")
+        tbl = categorical_summary_fixed(df, cat)
+        with pd.option_context("display.max_columns", None, "display.width", None, "display.float_format", lambda x: f"{x:.6g}"):
+            print(tbl)
+
+    # ====== 4) カテゴリ×数値（min-max 正規化、固定レベル×固定統計：count系は出さない） ======
+    print("\n=== カテゴリ×数値の要約統計（min-max正規化後, 固定レベル×固定統計） ===")
+    for cat in CAT_COL_ORDER:
+        print(f"\n--- Group by: {cat} ---")
+        tbl = group_table_fixed(df, df_norm, cat)
+        with pd.option_context("display.max_columns", None, "display.width", None, "display.float_format", lambda x: f"{x:.6g}"):
+            print(tbl)
+
+    # ====== 5) カテゴリ×カテゴリのクロス集計（★比率 0〜1 のみ出力・固定レベル） ======
+    print("\n=== カテゴリ×カテゴリのクロス集計（全体比 0〜1・固定レベル） ===")
+    for a, b in combinations(CAT_COL_ORDER, 2):
+        print(f"\n--- Crosstab (ratio): {a} × {b} ---")
+        ratio = crosstab_ratio_fixed(df, a, b)
+        with pd.option_context("display.max_columns", None, "display.width", None, "display.float_format", lambda x: f"{x:.6g}"):
+            print(ratio)
+
+if __name__=="__main__":
+    main()

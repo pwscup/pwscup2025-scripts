@@ -174,6 +174,58 @@ def run_lr_table(csv_path: str,
 
 
 # ==== 差分本体 ====
+def eval(path_to_csv1, path_to_csv2, print_details=False):
+    # fix optional hyperparameters with their default values
+    target = "asthma_flag"
+    test_size = 0.2
+    random_state = 42
+    ensure_terms = default = "ETHNICITY_hispanic"
+
+    # 片方ずつ LR 実行
+    t1, auc1, terms1 = run_lr_table(
+        path_to_csv1, target=target, test_size=test_size,
+        random_state=random_state, ensure_terms=ensure_terms
+    )
+    t2, auc2, terms2 = run_lr_table(
+        path_to_csv2, target=target, test_size=test_size,
+        random_state=random_state, ensure_terms=ensure_terms
+    )
+
+    # term 和集合で reindex（欠側は0）
+    terms_all = sorted(set(terms1).union(set(terms2)))
+    t1i = t1.set_index("term").reindex(terms_all).fillna(0.0)
+    t2i = t2.set_index("term").reindex(terms_all).fillna(0.0)
+
+    # 差分（file2 - file1）：列名は元と同じ（値が差分）
+    diff = (t2i[COLS_ORDER[1:]] - t1i[COLS_ORDER[1:]]).reset_index()
+    diff = diff.rename(columns={"index": "term"})
+    diff = diff[COLS_ORDER]  # 列順を固定
+    # NaN 安全化（念のため）
+    for c in COLS_ORDER[1:]:
+        diff[c] = pd.to_numeric(diff[c], errors="coerce").fillna(0.0)
+
+    # 出力
+    if print_details:
+        with pd.option_context("display.max_columns", None,
+                               "display.width", None,
+                               "display.float_format", lambda x: f"{x:.6g}"):
+            print(f"AUC (file1): {auc1:.6f}")
+            print(f"AUC (file2): {auc2:.6f}")
+            print(f"AUC_DIFF   : {auc2 - auc1:.6f}")
+
+            print("\n=== Logistic regression DIFF (file2 - file1) — const excluded; values are differences ===")
+            print(diff.to_string(index=False))
+
+    # 最大絶対差（表の全数値列から算出。AUCは含めない）
+    max_abs = float(np.nanmax(np.abs(diff[COLS_ORDER[1:]].to_numpy()))) if not diff.empty else 0.0
+    if print_details:
+        print(f"\nMAX_ABS_DIFF {max_abs:.6g}")
+
+    # 保存（任意）
+    # if args.out:
+    #     diff.to_csv(args.out, index=False)
+
+    return max_abs
 
 def main():
     ap = argparse.ArgumentParser(description="LR_asthma 差分: 2つのCSVの 0〜1 指標（coefは実数）を (file2 - file1) で出力。欠側termは0埋め。NaNは0。")

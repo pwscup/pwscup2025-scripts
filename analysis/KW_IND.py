@@ -20,6 +20,8 @@ DEFAULT_P_NORM = "arctan"   # 'arctan' / 'exp' / 'log1p'
 DEFAULT_P_SCALE = 10.0
 DEFAULT_P_CAP = 300.0
 
+NUM_COLS = ["H_norm", "minus_log10_p_norm", "epsilon2", "eta2_kw", "rank_eta2", "A_pair_avg", "A_pair_sym"]
+
 def find_col_case_insensitive(df: pd.DataFrame, name: str) -> str | None:
     low = name.lower()
     for c in df.columns:
@@ -131,6 +133,101 @@ def normalize_mlog10p(x, method=DEFAULT_P_NORM, scale=DEFAULT_P_SCALE, cap=DEFAU
     else:  # "log1p"
         cap = float(cap)
         return np.log1p(np.minimum(x, cap)) / np.log1p(cap)
+
+# ==== 1つのCSVに対して KW 指標を算出 ====
+
+def compute_kw_table(df:pd.DataFrame, # csv_path: str,
+                     age_col_name: str,
+                     metrics_csv: str,
+                     custom_bins_str: str,
+                     min_per_group: int,
+                     p_norm: str, p_scale: float, p_cap: float) -> pd.DataFrame:
+    
+    age_col = find_col_case_insensitive(df, age_col_name)
+    if age_col is None:
+        # raise SystemExit(f"[{csv_path}] 年齢列 {age_col_name} が見つかりません。")
+        raise SystemExit(f"年齢列 {age_col_name} が見つかりません。")
+
+    metric_names = [m.strip() for m in metrics_csv.split(",") if m.strip()]
+    metrics, not_found = [], []
+    for m in metric_names:
+        col = find_col_case_insensitive(df, m)
+        (metrics if col is not None else not_found).append(col or m)
+
+    if not metrics:
+        # どれも無ければ空表（あとで0埋め差分可）
+        return pd.DataFrame(columns=["metric"] + NUM_COLS)
+
+    custom_bins = DEFAULT_BINS if not custom_bins_str.strip() else [float(x) for x in custom_bins_str.split(",") if x.strip()]
+    groups_ser = make_age_groups_by_custom_bins(df[age_col], custom_bins)
+
+    rows = []
+    for m in metrics:
+        if m not in df.columns:
+            # 無い metric は0埋め（差分用）
+            rows.append({"metric": m, **{k: 0.0 for k in NUM_COLS}})
+            continue
+
+        y_all = pd.to_numeric(df[m], errors="coerce")
+        mask = y_all.notna() & groups_ser.notna()
+        y = y_all[mask].to_numpy(dtype=float)
+        g = pd.Categorical(groups_ser[mask])
+        labels = list(g.categories.astype(str))
+        k = len(labels)
+
+        # 各群
+        grp_vals = [y[g.codes == i] for i in range(k)]
+        used_vals = [arr for arr in grp_vals if len(arr) >= min_per_group]
+        n_eff = sum(len(arr) for arr in used_vals)
+        k_used = len(used_vals)
+
+        if k_used < 2:
+            rows.append({"metric": m, **{k: 0.0 for k in NUM_COLS}})
+            continue
+
+        # Kruskal–Wallis
+        try:
+            H, _ = kruskal(*used_vals)
+        except Exception:
+            rows.append({"metric": m, **{k: 0.0 for k in NUM_COLS}})
+            continue
+
+        dfree = k_used - 1
+        mlog10p, _ = chi2_logp_safe(float(H), dfree)
+
+        # 効果量
+        eps = (H - dfree) / (n_eff - dfree) if (n_eff - dfree) > 0 else 0.0
+        eps = float(np.clip(eps, 0.0, 1.0))
+        eta = eta2_kw(float(H), int(n_eff), int(k_used))
+        g_codes = np.concatenate([np.full(len(arr), i, dtype=int) for i, arr in enumerate(used_vals)])
+        r_eta = rank_eta2(y=np.concatenate(used_vals), g_codes=g_codes, G=k_used)
+        A_avg, A_sym = multi_group_A_metrics(used_vals)
+
+        # H の 0-1 正規化（H/Hmax）
+        Hmax = h_max_no_ties([len(arr) for arr in used_vals])
+        H_scaled_max = float(H / Hmax) if Hmax > 0 else 0.0
+        H_scaled_max = float(np.clip(H_scaled_max, 0.0, 1.0))
+
+        # minus_log10_p の 0-1 正規化（飽和しにくい）
+        pnorm = float(normalize_mlog10p(mlog10p, method=p_norm, scale=p_scale, cap=p_cap))
+
+        rows.append({
+            "metric": m,
+            "H_norm": H_scaled_max,
+            "minus_log10_p_norm": pnorm,
+            "epsilon2": eps,
+            "eta2_kw": eta,
+            "rank_eta2": float(r_eta),
+            "A_pair_avg": A_avg,
+            "A_pair_sym": A_sym
+        })
+
+    out = pd.DataFrame(rows, columns=["metric"] + NUM_COLS)
+    # 欠損は0埋め
+    for c in NUM_COLS:
+        out[c] = pd.to_numeric(out[c], errors="coerce").fillna(0.0)
+    out = out.sort_values("metric", kind="mergesort").reset_index(drop=True)
+    return out
 
 def main():
     ap = argparse.ArgumentParser(

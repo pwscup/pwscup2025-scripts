@@ -154,8 +154,8 @@ def pearson_corr_pairs(df: pd.DataFrame, num_cols: List[str]) -> pd.DataFrame:
 
 # ---------- 1ファイル分の長形式テーブル作成 ----------
 
-def build_long_table_for_csv(csv_path: str) -> pd.DataFrame:
-    df = read_csv_all_str(csv_path)
+def build_long_table_for_csv(df: pd.DataFrame) -> pd.DataFrame:
+    # df = read_csv_all_str(csv_path)
     num_cols = detect_numeric_columns(df, thresh=0.95)
     cat_cols = [c for c in df.columns if c not in num_cols]
 
@@ -170,20 +170,26 @@ def build_long_table_for_csv(csv_path: str) -> pd.DataFrame:
     # term 重複が万一あれば平均で集約（通常は発生しない想定）
     all_terms = all_terms.groupby("term", as_index=False)["value"].mean()
     all_terms = all_terms.sort_values("term", kind="mergesort").reset_index(drop=True)
+    
     return all_terms
 
-
 # ---------- 差分と出力 ----------
+def eval_diff(df1: pd.DataFrame, df2: pd.DataFrame,
+                 out=None, print_details=False) -> pd.DataFrame:
+    """
+    データフレームを2つ受け取って、それらの基本統計の差を返す
 
-def main():
-    ap = argparse.ArgumentParser(description="Compute stats for two CSVs and print their difference in stats.py-like format (missing terms treated as 0).")
-    ap.add_argument("csv1", help="first CSV")
-    ap.add_argument("csv2", help="second CSV")
-    ap.add_argument("-o", "--out", default=None, help="optional path to save the full diff table (CSV)")
-    args = ap.parse_args()
+    Paramters:
+    path_to_csv1 (str): データフレームその1
+    path_to_csv2 (str): CSVファイルその2
+    out (str): 基本統計の差を保存したい場所を指定。テーブル同士の差が書き込まれる
+    print_details (bool): 詳細の結果を表示するかどうか
 
-    tbl1 = build_long_table_for_csv(args.csv1)
-    tbl2 = build_long_table_for_csv(args.csv2)
+    Returns:
+    基本統計の差 (pd.DataFrame)
+    """
+    tbl1 = build_long_table_for_csv(df1)
+    tbl2 = build_long_table_for_csv(df2)
 
     # term全体の和集合を作り、無い方は0で埋めて差分（csv2 - csv1）
     terms_all = sorted(set(tbl1["term"]).union(set(tbl2["term"])))
@@ -203,26 +209,75 @@ def main():
     diff_corr = diff_df[diff_df["term"].str.startswith("CORR:")].copy()
 
     # 出力（stats.py風）
-    with pd.option_context("display.max_columns", None, "display.width", None, "display.float_format", lambda x: f"{x:.6g}"):
-        print("=== DIFF: Normalized (0-1) ===")
-        if not diff_norm.empty:
-            print(diff_norm.to_string(index=False))
-        else:
-            print("(no normalized terms)")
+    if print_details:
+        with pd.option_context("display.max_columns", None, "display.width", None, "display.float_format", lambda x: f"{x:.6g}"):
+            print("=== DIFF: Normalized (0-1) ===")
+            if not diff_norm.empty:
+                print(diff_norm.to_string(index=False))
+            else:
+                print("(no normalized terms)")
 
-        print("\n=== DIFF: Correlation (-1..1) ===")
-        if not diff_corr.empty:
-            print(diff_corr.to_string(index=False))
-        else:
-            print("(no correlation terms)")
+            print("\n=== DIFF: Correlation (-1..1) ===")
+            if not diff_corr.empty:
+                print(diff_corr.to_string(index=False))
+            else:
+                print("(no correlation terms)")
+    
+    # 保存オプション
+    if out:
+        diff_df.to_csv(out, index=False)
+
+    return diff_df
+
+def eval_diff_max_abs(df1: pd.DataFrame, df2: pd.DataFrame,
+                 out=None, print_details=False) -> float:
+    """
+    データフレームを2つ受け取って、それらの基本統計のうち最も大きい差を返す
+
+    Paramters:
+    path_to_csv1 (str): データフレームその1
+    path_to_csv2 (str): CSVファイルその2
+    out (str): 基本統計の差を保存したい場所を指定。テーブル同士の差が書き込まれる
+    print_details (bool): 詳細の結果を表示するかどうか
+
+    Returns:
+    基本統計の最も大きい差 (float)
+    """
+    diff_df = eval_diff(df1, df2, out, print_details)
 
     # 最大絶対差
     max_abs = float(diff_df["value_diff"].abs().max()) if not diff_df.empty else 0.0
-    print(f"\nMAX_ABS_DIFF {max_abs:.6g}")
 
-    # 保存オプション
-    if args.out:
-        diff_df.to_csv(args.out, index=False)
+    return max_abs
+
+def eval(path_to_csv1:str, path_to_csv2:str,
+         out=None, print_details=False) -> float:
+    """
+    CSVファイルへのパスを2つ受け取って、それらの基本統計のうち最も大きい差を返す
+
+    Paramters:
+    path_to_csv1 (str): CSVファイルその1
+    path_to_csv2 (str): CSVファイルその2
+    out (str): 基本統計の差を保存したい場所を指定。テーブル同士の差が書き込まれる
+    print_details (bool): 詳細の結果を表示するかどうか
+
+    Returns:
+    基本統計の最も大きい差 (float)
+    """
+
+    df1 = read_csv_all_str(path_to_csv1)
+    df2 = read_csv_all_str(path_to_csv2)
+
+    max_abs = eval_diff_max_abs(df1, df2, out, print_details)
+
+    return max_abs
 
 if __name__ == "__main__":
-    main()
+    ap = argparse.ArgumentParser(description="Compute stats for two CSVs and print their difference in stats.py-like format (missing terms treated as 0).")
+    ap.add_argument("csv1", help="first CSV")
+    ap.add_argument("csv2", help="second CSV")
+    ap.add_argument("-o", "--out", default=None, help="optional path to save the full diff table (CSV)")
+    args = ap.parse_args()
+
+    max_abs = eval(args.csv1, args.csv2, args.out, print_details=True)
+    print(f"\nMAX_ABS_DIFF {max_abs:.6g}")

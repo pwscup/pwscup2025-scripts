@@ -172,6 +172,52 @@ def build_long_table_for_csv(csv_path: str) -> pd.DataFrame:
     all_terms = all_terms.sort_values("term", kind="mergesort").reset_index(drop=True)
     return all_terms
 
+def eval(path_to_csv1, path_to_csv2, print_details=False):
+    tbl1 = build_long_table_for_csv(path_to_csv1)
+    tbl2 = build_long_table_for_csv(path_to_csv2)
+
+    # term全体の和集合を作り、無い方は0で埋めて差分（csv2 - csv1）
+    terms_all = sorted(set(tbl1["term"]).union(set(tbl2["term"])))
+    d1 = tbl1.set_index("term")["value"].reindex(terms_all).fillna(0.0)
+    d2 = tbl2.set_index("term")["value"].reindex(terms_all).fillna(0.0)
+    diff = (d2 - d1).astype(float)
+
+    # 表示を2セクションに分ける（Normalized と Correlation）
+    diff_df = diff.reset_index()
+    diff_df.columns = ["term", "value_diff"]
+
+    # NaN→0（念のため）
+    diff_df["value_diff"] = diff_df["value_diff"].fillna(0.0)
+
+    # セクション分割
+    diff_norm = diff_df[diff_df["term"].str.startswith(("NUM:", "CAT:"))].copy()
+    diff_corr = diff_df[diff_df["term"].str.startswith("CORR:")].copy()
+
+    # 出力（stats.py風）
+    if print_details:
+        with pd.option_context("display.max_columns", None, "display.width", None, "display.float_format", lambda x: f"{x:.6g}"):
+            print("=== DIFF: Normalized (0-1) ===")
+            if not diff_norm.empty:
+                print(diff_norm.to_string(index=False))
+            else:
+                print("(no normalized terms)")
+
+            print("\n=== DIFF: Correlation (-1..1) ===")
+            if not diff_corr.empty:
+                print(diff_corr.to_string(index=False))
+            else:
+                print("(no correlation terms)")
+
+    # 最大絶対差
+    max_abs = float(diff_df["value_diff"].abs().max()) if not diff_df.empty else 0.0
+    if print_details:
+        print(f"\nMAX_ABS_DIFF {max_abs:.6g}")
+    
+    return max_abs
+
+    # 保存オプション
+    # if path_to_out:
+    #     diff_df.to_csv(path_to_out, index=False)
 
 # ---------- 差分と出力 ----------
 

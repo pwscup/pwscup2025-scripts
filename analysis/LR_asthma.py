@@ -15,6 +15,7 @@ Logistic Regression for asthma_flag (fixed-schema output, approach B)
 """
 
 import argparse
+
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
@@ -43,6 +44,135 @@ def vif_to_unit(v):
     v = np.asarray(v, dtype=float)
     v = np.where(~np.isfinite(v) | (v < 1.0), 1.0, v)
     return 1.0 - 1.0 / v
+
+# ==== 1 CSV から LR_asthma 互換の表を作る ====
+
+COLS_ORDER = ["term", "coef", "p_value", "OR_norm", "CI_low_norm", "CI_high_norm", "VIF_norm"]
+
+def run_lr_table(df: pd.DataFrame,
+                 target: str = "asthma_flag",
+                 test_size: float = 0.2,
+                 random_state: int = 42,
+                 ensure_terms: str = "ETHNICITY_hispanic") -> tuple[pd.DataFrame, float, list[str]]:
+    """
+    csv_path を読み、LR_asthma.py と同様に
+    - 前処理（数値 + カテゴリone-hot drop_first）
+    - ロジスティック回帰（const あり、出力は const 除外）
+    - OR/CI を 0-1 化、VIF を 0-1 化
+    - 固定順序の term を作る（方式B: 学習に使った列 ∪ ensure_terms を辞書順）
+    を行い、[COLS_ORDER] の表を返す。AUC と最終の term リストも返す。
+    """
+    # df = pd.read_csv(csv_path, dtype=str, keep_default_na=False)
+
+    if target not in df.columns:
+        # raise SystemExit(f"[{csv_path}] target column '{target}' not found.")
+        raise SystemExit(f"target column '{target}' not found.")
+    if not is_binary_01(df[target]):
+        # raise SystemExit(f"[{csv_path}] target column '{target}' must be strictly binary 0/1.")
+        raise SystemExit(f"target column '{target}' must be strictly binary 0/1.")
+
+    y = pd.to_numeric(df[target], errors="coerce").astype("float64")
+
+    X_raw = df.drop(columns=[target]).copy()
+    X_num_try = X_raw.apply(pd.to_numeric, errors="coerce")
+    num_cols = [c for c in X_num_try.columns if X_num_try[c].notna().sum() > 0]
+    X_num = X_num_try[num_cols] if num_cols else pd.DataFrame(index=df.index)
+
+    cat_cols = [c for c in X_raw.columns if c not in num_cols]
+    if cat_cols:
+        X_cat = pd.get_dummies(
+            X_raw[cat_cols].replace({"": np.nan}).fillna("(NA)").astype("category"),
+            drop_first=True
+        )
+    else:
+        X_cat = pd.DataFrame(index=df.index)
+
+    X = pd.concat([X_num, X_cat], axis=1)
+    X = X.apply(pd.to_numeric, errors="coerce").replace([np.inf, -np.inf], np.nan)
+    X = X.dropna(axis=1, how="all")
+    if X.shape[1] == 0:
+        # raise SystemExit(f"[{csv_path}] No usable features after preprocessing.")
+        raise SystemExit(f"No usable features after preprocessing.")
+
+    med = X.median(numeric_only=True)
+    X = X.fillna(med).astype("float64")
+    zero_var = X.nunique(dropna=False) <= 1
+    if zero_var.all():
+        # raise SystemExit(f"[{csv_path}] All feature columns have zero variance.")
+        raise SystemExit(f"All feature columns have zero variance.")
+    if zero_var.any():
+        X = X.loc[:, ~zero_var]
+
+    base_terms = sorted(X.columns.tolist())
+    X = X.reindex(columns=base_terms)
+
+    mask = y.notna() & y.isin([0.0, 1.0])
+    X = X.loc[mask]
+    y = y.loc[mask]
+    if X.shape[0] < 3 or X.shape[1] == 0:
+        # raise SystemExit(f"[{csv_path}] Not enough samples or features after cleaning.")
+        raise SystemExit(f"Not enough samples or features after cleaning.")
+
+    X_tr, X_te, y_tr, y_te = train_test_split(
+        X, y, test_size=test_size, random_state=random_state, stratify=y.astype(int)
+    )
+    X_tr_const = sm.add_constant(X_tr, has_constant="add").astype("float64")
+    X_te_const = sm.add_constant(X_te, has_constant="add").astype("float64")
+
+    model = sm.GLM(y_tr.astype("float64"), X_tr_const, family=sm.families.Binomial())
+    res = model.fit()
+
+    proba = res.predict(X_te_const)
+    auc = roc_auc_score(y_te, proba)
+
+    params = res.params.drop(labels=["const"])
+    pvals  = res.pvalues.drop(labels=["const"])
+    conf   = res.conf_int().drop(index="const")  # columns [0,1]
+
+    OR      = np.exp(params.values)
+    CI_low  = np.exp(conf[0].reindex(params.index).values)
+    CI_high = np.exp(conf[1].reindex(params.index).values)
+
+    coef_df = pd.DataFrame({
+        "term": params.index,
+        "coef": params.values,
+        "p_value": pvals.values,
+        "OR_norm": odds_to_unit(OR),
+        "CI_low_norm": odds_to_unit(CI_low),
+        "CI_high_norm": odds_to_unit(CI_high),
+    })
+
+    # VIF（const除外）
+    vif_rows = []
+    cols = list(X_tr_const.columns)  # ['const', ...base_terms...]
+    for i, col in enumerate(cols):
+        if col == "const":
+            continue
+        try:
+            v = float(variance_inflation_factor(X_tr_const.values, i))
+        except Exception:
+            v = np.nan
+        vif_rows.append((col, v))
+    vif_df = pd.DataFrame(vif_rows, columns=["term", "VIF"])
+    vif_df["VIF_norm"] = vif_to_unit(vif_df["VIF"].values)
+    vif_df = vif_df.drop(columns=["VIF"])
+
+    # 固定スキーマ：ensure-terms を union
+    ensure_list = [t.strip() for t in ensure_terms.split(",") if t.strip()]
+    final_terms = sorted(set(base_terms).union(ensure_list))
+
+    out = (coef_df.merge(vif_df, on="term", how="outer")
+                  .set_index("term")
+                  .reindex(final_terms)
+                  .reset_index())
+
+    # 欠損は 0 に
+    for c in COLS_ORDER[1:]:
+        out[c] = pd.to_numeric(out[c], errors="coerce").fillna(0.0)
+
+    # 列順
+    out = out[COLS_ORDER]
+    return out, float(auc), final_terms
 
 def main():
     ap = argparse.ArgumentParser(

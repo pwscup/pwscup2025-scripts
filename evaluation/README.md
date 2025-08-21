@@ -3,4 +3,13 @@
 - `stats_diff.py`：`stats.py` に Bi.csv, Ci.csv を入力として得られる統計値の差分を出力（有用性評価指標）
 - `KW_IND_diff.py`：`KW_IND.py` に Bi.csv, Ci.csv を入力として得られる統計値の差分を出力（有用性評価指標）
 - `LR_asthma_diff.py`：`LR_asthma.py` に Bi.csv, Ci.csv を入力として得られる統計値の差分を出力（有用性評価指標）
-
+- `eval_all.py`：evaluation内の3つの評価コード(stats_diff.py, LR_asthma_diff.py, KW_IND_diff.py)を一括で実行するeval_all.pyを追加
+    - ↓入出力例
+    - `python3 evaluation/eval_all.py data/HI_10K.csv data/MA_10K.csv`
+    - stats_diff max_abs: 0.5518
+    - LR_asthma_diff max_abs: 0.8862336002175595
+    - KW_IND_diff max_abs: 0.033761053244578954
+    - Total loss: 40.471893069242775
+    - Total lossは議事録に合わせて、それぞれx40, x20, x20した。
+    - -dを指定すると途中のログを省略せずに出力。3つの評価コードでのoptionコマンド引数はout以外はdefault値で固定。結果の書き出し(out)には非対応。
+    - この機能を実現するために、stats_diff.py, LR_asthma_diff.py, KW_IND_diff.pyにeval(path_to_csv1, path_to_csv2, print_details=False)という共通のインターフェースを持つ関数を追記。有用性を使って逐次的に加工データを更新するアルゴリゴリズムの実装に活用する場合も想定して、返り値をabs_maxに統一。各ファイルのmain()を一部だけ変更して実装。

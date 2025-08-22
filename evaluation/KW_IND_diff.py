@@ -35,52 +35,6 @@ DEFAULT_P_CAP = KW_IND.DEFAULT_P_CAP
 
 NUM_COLS = KW_IND.NUM_COLS
 
-def eval(path_to_csv1, path_to_csv2, print_details=False):
-    # fix optional hyperparameters with their default values
-    age_col = TARGET_DEFAULT
-    metrics = ",".join(METRICS_DEFAULT)
-    custom_bins = ""
-    min_per_group = 2
-    p_norm = DEFAULT_P_NORM
-    p_scale = DEFAULT_P_SCALE
-    p_cap = DEFAULT_P_CAP
-
-    t1 = compute_kw_table(
-        path_to_csv1, age_col, metrics, custom_bins,
-        min_per_group, p_norm, p_scale, p_cap
-    )
-    t2 = compute_kw_table(
-        path_to_csv2, age_col, metrics, custom_bins,
-        min_per_group, p_norm, p_scale, p_cap
-    )
-
-    # metric の和集合で揃え、欠側は0埋め
-    metrics_all = sorted(set(t1["metric"]).union(set(t2["metric"])))
-    t1i = t1.set_index("metric").reindex(metrics_all).fillna(0.0)
-    t2i = t2.set_index("metric").reindex(metrics_all).fillna(0.0)
-
-    # 差分 (file2 - file1)
-    diff = (t2i[NUM_COLS] - t1i[NUM_COLS]).reset_index()
-    diff = diff.rename(columns={"index": "metric"}).sort_values("metric", kind="mergesort").reset_index(drop=True)
-
-    # 表示（KW_IND 風ヘッダ、group_sizes なし）
-    if print_details:
-        with pd.option_context("display.max_columns", None,
-                               "display.width", None,
-                               "display.float_format", lambda x: f"{x:.6g}"):
-            print("\n=== KW_IND Diff (file2 - file1) — H_norm / p_norm / effect sizes (0–1) ===")
-            print(diff.to_string(index=False))
-
-    # 全差分の最大絶対値
-    max_abs = float(np.nanmax(np.abs(diff[NUM_COLS].to_numpy()))) if not diff.empty else 0.0
-    if print_details:
-        print(f"\nMAX_ABS_DIFF {max_abs:.6g}")
-
-    # 保存オプション
-    # if args.out:
-    #     diff.to_csv(args.out, index=False)
-
-    return max_abs
 
 def eval(path_to_csv1:str, path_to_csv2:str,
          age_col=TARGET_DEFAULT, metrics=",".join(METRICS_DEFAULT),

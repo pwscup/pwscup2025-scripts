@@ -10,6 +10,6 @@
 - MA_10K.csv : MA_100K.csv からランダムに1万レコードをサンプリングしたデータ（データ Bi に相当）
 - MA_ans.csv : 正解データ（データ Zi に相当）※ MA_100K.csv の k 番目のレコードが MA_10K.csv で使われているなら MA_ans.csv の k 行目は1、そうでなければ0とした10万行のデータ
 
-## `pre_column_range.json`：予備選のCi.csvの各データの値域
+## `pre_columns_range.json`：予備選のCi.csvの各データの値域
 - このjsonファイルで定義された値域に入っているCi.csvであれば、CodaBenchで受け付けられます
 - ローカル環境では `check_csv.py` でチェックしてください

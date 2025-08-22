@@ -1,0 +1,119 @@
+{
+  "columns": {
+    "AGE": {
+      "type": "number",
+      "min": 2.0,
+      "max": 110.0,
+      "max_decimal_places": 0
+    },
+    "ETHNICITY": {
+      "type": "category",
+      "values": [
+        "hispanic",
+        "nonhispanic"
+      ]
+    },
+    "GENDER": {
+      "type": "category",
+      "values": [
+        "F",
+        "M"
+      ]
+    },
+    "RACE": {
+      "type": "category",
+      "values": [
+        "asian",
+        "black",
+        "hawaiian",
+        "native",
+        "other",
+        "white"
+      ]
+    },
+    "asthma_flag": {
+      "type": "number",
+      "min": 0.0,
+      "max": 1.0,
+      "max_decimal_places": 0
+    },
+    "depression_flag": {
+      "type": "number",
+      "min": 0.0,
+      "max": 1.0,
+      "max_decimal_places": 0
+    },
+    "encounter_count": {
+      "type": "number",
+      "min": 4.0,
+      "max": 1133.0,
+      "max_decimal_places": 0
+    },
+    "mean_bmi": {
+      "type": "number",
+      "min": 2.73,
+      "max": 75.01,
+      "max_decimal_places": 2
+    },
+    "mean_diastolic_bp": {
+      "type": "number",
+      "min": 5.99,
+      "max": 125.36,
+      "max_decimal_places": 2
+    },
+    "mean_systolic_bp": {
+      "type": "number",
+      "min": 37.32,
+      "max": 168.62,
+      "max_decimal_places": 2
+    },
+    "mean_weight": {
+      "type": "number",
+      "min": 5.75,
+      "max": 208.1,
+      "max_decimal_places": 2
+    },
+    "num_allergies": {
+      "type": "number",
+      "min": 0.0,
+      "max": 16.0,
+      "max_decimal_places": 0
+    },
+    "num_devices": {
+      "type": "number",
+      "min": 0.0,
+      "max": 164.0,
+      "max_decimal_places": 0
+    },
+    "num_immunizations": {
+      "type": "number",
+      "min": 0.0,
+      "max": 40.0,
+      "max_decimal_places": 0
+    },
+    "num_medications": {
+      "type": "number",
+      "min": 0.0,
+      "max": 6019.0,
+      "max_decimal_places": 0
+    },
+    "num_procedures": {
+      "type": "number",
+      "min": 0.0,
+      "max": 2472.0,
+      "max_decimal_places": 0
+    },
+    "obesity_flag": {
+      "type": "number",
+      "min": 0.0,
+      "max": 1.0,
+      "max_decimal_places": 0
+    },
+    "stroke_flag": {
+      "type": "number",
+      "min": 0.0,
+      "max": 1.0,
+      "max_decimal_places": 0
+    }
+  }
+}

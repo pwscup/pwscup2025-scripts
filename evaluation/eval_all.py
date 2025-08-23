@@ -15,15 +15,15 @@ if __name__ == "__main__":
     args = ap.parse_args()
 
     # 基本統計の誤差を算出
-    stats_diff_max_abs = stats_diff.eval(args.Bi_csv, args.Ci_csv, args.detail)
+    stats_diff_max_abs = stats_diff.eval(args.Bi_csv, args.Ci_csv, print_details=args.detail)
     print(f"stats_diff max_abs: {stats_diff_max_abs}")
 
     # Logistic Regressionでの誤差を算出
-    LR_asthma_diff_max_abs = LR_asthma_diff.eval(args.Bi_csv, args.Ci_csv, args.detail)
+    LR_asthma_diff_max_abs = LR_asthma_diff.eval(args.Bi_csv, args.Ci_csv, print_details=args.detail)
     print(f"LR_asthma_diff max_abs: {LR_asthma_diff_max_abs}")
     
     # KW_IND_diff
-    KW_IND_diff_max_abs = KW_IND_diff.eval(args.Bi_csv, args.Ci_csv, args.detail)
+    KW_IND_diff_max_abs = KW_IND_diff.eval(args.Bi_csv, args.Ci_csv, print_details=args.detail)
     print(f"KW_IND_diff max_abs: {KW_IND_diff_max_abs}")
 
     # 重み付き合計

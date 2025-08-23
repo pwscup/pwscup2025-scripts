@@ -2,9 +2,7 @@
 - `check_ans.py`：Zi.csv と Fij.csv を入力し、ともに値が1となっている行番号（正解）と正解数を出力
 - `stats_diff.py`：`stats.py` に Bi.csv, Ci.csv を入力として得られる統計値の差分を出力（有用性評価指標）
 - `KW_IND_diff.py`：`KW_IND.py` に Bi.csv, Ci.csv を入力として得られる統計値の差分を出力（有用性評価指標）
-- `KW_IND_diff2.py`：`KW_IND_diff.py` を CodaBench 処理用に変更したもの（CodaBenchではscipyモジュールをインポートできないため、scipyモジュールを使わずに各値を計算）。正式な有用性スコアは`KW_IND_diff.py`の結果を用いるため、参考用とする
 - `LR_asthma_diff.py`：`LR_asthma.py` に Bi.csv, Ci.csv を入力として得られる統計値の差分を出力（有用性評価指標）
-- `LR_asthma_diff2.py`：`LR_asthma_diff.py` を CodaBench 処理用に変更したもの（CodaBenchではstatsmodelsモジュールをインポートできないため、statsmodelsモジュールを使わずに各値を計算）。正式な有用性スコアは`LR_asthma_diff.py`の結果を用いるため、参考用とする
 - `eval_all.py`：evaluation内の3つの評価コード(stats_diff.py, LR_asthma_diff.py, KW_IND_diff.py)を一括で実行するeval_all.pyを追加
     - ↓入出力例
     - `python3 evaluation/eval_all.py data/HI_10K.csv data/MA_10K.csv`

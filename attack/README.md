@@ -27,3 +27,10 @@
 
 ## 攻撃者クラス `Conf_Attack`
 モデルが確信を持って正答した行をメンバーと推定する。インスタンス作成時により小さいthresholdを指定することで、要求する確信度を高められる。
+
+# `attack_Ci.py`: `mia.py`と同等
+ `mia.py`を`attack_Di.py`と同様の書き方に変更したもの。
+
+# `attack_example.py`
+- CiとDi両方を使って、Aiの各行がBiに属するかどうかを推定する攻撃のサンプル。
+- `attack_Ci.py`と`attack_Di.py`に実装されている攻撃手法でそれぞれ攻撃し、多数決で推定

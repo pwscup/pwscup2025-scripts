@@ -31,6 +31,6 @@
 # `attack_Ci.py`: `mia.py`と同等
  `mia.py`を`attack_Di.py`と同様の書き方に変更したもの。
 
-# `attack_example.py`
+# `attack_example.py`: `Fij`生成例
 - CiとDi両方を使って、Aiの各行がBiに属するかどうかを推定する攻撃のサンプル。
 - `attack_Ci.py`と`attack_Di.py`に実装されている攻撃手法でそれぞれ攻撃し、多数決で推定

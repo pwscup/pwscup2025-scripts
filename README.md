@@ -4,3 +4,10 @@
 ## ![PWS Cup 2025 の基本的な流れ](PWSCUP2025flow.pdf)
 
 <img width="1050" height="567" alt="image" src="https://github.com/user-attachments/assets/859c85d5-c340-488e-bf68-3a58edc2e981" />
+
+## Installation
+
+```bash
+pip install -r requirements.txt
+```
+

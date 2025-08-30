@@ -15,6 +15,16 @@ def is_one(val: str) -> bool:
     except ValueError:
         return False
 
+def is_zero(val: str) -> bool:
+    s = str(val).strip()
+    if s == "":
+        return False
+    # 数値として0と等しいかを判定（"0", "00", "0.0" 等を許容）
+    try:
+        return float(s) == 0.0
+    except ValueError:
+        return False
+
 def read_first_column(path: str):
     with open(path, "r", encoding="utf-8", newline="") as f:
         reader = csv.reader(f)
@@ -26,7 +36,7 @@ def read_first_column(path: str):
 
 def main():
     ap = argparse.ArgumentParser(
-        description="2つの1列CSVを比較し、両方1の行番号を出力。最後に総数を表示。"
+        description="2つの1列CSVを比較し、双方が1または双方が0の行番号を出力。最後に総数を表示。"
     )
     ap.add_argument("csv1", help="1つ目のCSV（1列想定）")
     ap.add_argument("csv2", help="2つ目のCSV（1列想定）")
@@ -50,7 +60,11 @@ def main():
 
     matched_indices = []
     for i in range(offset, n):
-        if is_one(col1[i]) and is_one(col2[i]):
+        # 双方が1、または双方が0の場合に一致とみなす
+        both_one = is_one(col1[i]) and is_one(col2[i])
+        both_zero = is_zero(col1[i]) and is_zero(col2[i])
+        
+        if both_one or both_zero:
             # 表示用の行番号（1始まり/0始まり）
             idx = i if args.zero_based else i
             # ヘッダーをスキップしても行番号は元の行番号で数える想定

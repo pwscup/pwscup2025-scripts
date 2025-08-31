@@ -5,6 +5,7 @@ import pandas as pd
 import stats_diff
 import LR_asthma_diff
 import KW_IND_diff
+from check_Ci_format import check_csv_Ci_format
 
 
 def eval_Ci_utility(path_to_Bi_csv, path_to_Ci_csv, 
@@ -42,5 +43,19 @@ if __name__ == "__main__":
     ap.add_argument("-d", "--print-details", action="store_true", help="[optional] despley the details", default=False)
     args = ap.parse_args()
 
-    eval_Ci_utility(args.Bi_csv, args.Ci_csv, print_details=args.print_details)
+    ok_Ci, erros_Ci = check_csv_Ci_format(args.Ci_csv)
+    if ok_Ci:
+        print("Ci format check: OK")
+    else:
+        print("Ci format check: NG")
+        for e in erros_Ci:
+            print(e)
+    
+    try:
+        # OK/NGに関わらず採点を強行
+        eval_Ci_utility(args.Bi_csv, args.Ci_csv, print_details=args.print_details)
+    except Exception as e:
+        print("Ciの採点を試みましたが正常に完了しませんでした")
+        print(e)
+
     eval_Di_utility()

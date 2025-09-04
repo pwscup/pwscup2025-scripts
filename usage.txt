@@ -23,13 +23,67 @@ python anonymization/randomshuffle_rows.py out/C22_3.csv out/C22_3_shuffled.csv
 python anonymization/gen_Di.py in/B22_3.csv out/C22_3_shuffled.csv out/sample_D22_3.json
 
 ### eval C22_*
-python evalfiles.py
+python anonymization/evalfiles.py
 output: out/evalfiles.txt
 #### This accuracy only depends on the inference errors of "stroke_flag".
 
 ## evaluation
-python evaluation/eval_all.py
+### eval stats of C22_*
+python evaluation/eval_all.py in/B22_1.csv out/C22_1_shuffled.csv 
+python evaluation/eval_all.py in/B22_2.csv out/C22_2_shuffled.csv 
+python evaluation/eval_all.py in/B22_3.csv out/C22_3_shuffled.csv 
 
+#### C22_1_shuffled
+stats_diff max_abs: 0.20361871624657207
+LR_asthma_diff max_abs: 0.8019302766208476
+KW_IND_diff max_abs: 0.163076116170131
+Ci utility: 52.55512349431754 / 80
+
+#### C22_2_shuffled
+stats_diff max_abs: 0.21152741173100845
+LR_asthma_diff max_abs: 0.8056547462616338
+KW_IND_diff max_abs: 0.1472544657619886
+Ci utility: 52.48071929028721 / 80
+
+#### C22_3_shuffled
+stats_diff max_abs: 0.22649723157221544
+LR_asthma_diff max_abs: 0.8532401623088031
+KW_IND_diff max_abs: 0.15451860270480708
+Ci utility: 50.78493543683918 / 80
+
+#### Chanh_C22_3_shuffled_K10
+stats_diff max_abs: 0.33499498161891705
+LR_asthma_diff max_abs: 0.9356853717866677
+KW_IND_diff max_abs: 0.1274700092184904
+Ci utility: 45.337093115140156 / 80
+
+#### Chanh_C22_3_shuffled_K5
+stats_diff max_abs: 0.1771414923583018
+LR_asthma_diff max_abs: 0.520010587532846
+KW_IND_diff max_abs: 0.08529895107252361
+Ci utility: 60.80814953356054 / 80
+
+#### Chanh_C22_1_shuffled_K5
+(pwscup2025_20250826) C:\Users\Hinata\Documents\PWSCUP2025\pwscup2025-scripts>python evaluation/eval_all.py in/B22_3.csv out/C22_3_shuffled.csv 
+stats_diff max_abs: 0.1872921005978505
+LR_asthma_diff max_abs: 0.8820271801074642
+KW_IND_diff max_abs: 0.10375945302920059
+Ci utility: 52.79258331335269 / 80
+
+#### Chanh_C22_2_shuffled_K5
+stats_diff max_abs: 0.21683733490613305
+LR_asthma_diff max_abs: 0.8602104295357484
+KW_IND_diff max_abs: 0.11758596069278837
+Ci utility: 51.770578799183944 / 80
+
+#### Chanh_C22_3_shuffled_K5_nocat
+stats_diff max_abs: 0.16922688648679085
+LR_asthma_diff max_abs: 0.6842639995479921
+KW_IND_diff max_abs: 0.08309488556190758
+Ci utility: 57.88374683833037 / 80
+
+## check
+check_csv.py out/test/C22_3_shuffled.csv out\sample_D22_1.json
 
 ## attack
 # python attack/attack_example.py -o out/Fij_1.csv out/Ai.csv out/Ci.csv

@@ -7,24 +7,14 @@
 
 
 ## anonymization
-### B22_1
-python anonymization/ano.py in/B22_1.csv out/C22_1.csv
-python anonymization/randomshuffle_rows.py out/C22_1.csv out/C22_1_shuffled.csv
-python anonymization/gen_Di.py in/B22_1.csv out/C22_1_shuffled.csv out/sample_D22_1.json
-
-### B22_2
-python anonymization/ano.py in/B22_2.csv out/C22_2.csv
-python anonymization/randomshuffle_rows.py out/C22_2.csv out/C22_2_shuffled.csv
-python anonymization/gen_Di.py in/B22_2.csv out/C22_2_shuffled.csv out/sample_D22_2.json
-
 ### B22_3
 python anonymization/ano.py in/B22_3.csv out/C22_3.csv
 python anonymization/randomshuffle_rows.py out/C22_3.csv out/C22_3_shuffled.csv
 python anonymization/gen_Di.py in/B22_3.csv out/C22_3_shuffled.csv out/sample_D22_3.json
 
-### eval C22_*
-python anonymization/evalfiles.py
-output: out/evalfiles.txt
+### evaluation of accuracy C22_*
+python anonymization/MLacc_files.py
+output: out/MLacc_files.txt
 #### This accuracy only depends on the inference errors of "stroke_flag".
 
 ## evaluation
@@ -86,5 +76,24 @@ Ci utility: 57.88374683833037 / 80
 check_csv.py out/test/C22_3_shuffled.csv out\sample_D22_1.json
 
 ## attack
-# python attack/attack_example.py -o out/Fij_1.csv out/Ai.csv out/Ci.csv
+### place PWSCUP2025_Pre_Data_for_Attack_**-** in out/
+
+### attackCi is attack of "distance(between Ai and Ci common columns) based". 
+### attackDi is combination of "Prediction attack" and "Confidence attack".
+### example attack uses "distance", "Prediction" and "Confidence".(if >1.5, "member")
+
+## python attack/attack_example.py -o out/Fij_01.csv out\PWSCUP2025_Pre_Data_for_Attack_01-05\A01.csv out\PWSCUP2025_Pre_Data_for_Attack_01-05\C01.csv out\PWSCUP2025_Pre_Data_for_Attack_01-05\D01.json
+
+### Fij_01.csv consists of 100,000 records and SUM of inference is 66,575(higher than limitation/10,000).
+### There should be much Type two errors...
+
+## proposal of developments
+### example_Proposal0(easy/efficient): limit 1s(Trues) to 10,000.(use original score)
+### Ci_Proposal1(moderate): limit 1s(Trues) to 10,000.(in attackCi/ use hungarian algorithm)
+### Di_Proposal2(easy): make threshold (confidence of AttackDi) higher.
+### Ci_Di_Proposal3(moderate): introduce noise step in attack(let 1/0 answers in Ci/Di) and weight them by quantity of noise
+### Di_Proposal4(hard/scratch/efficient): explore all paterns of ML models(run learning on our code) and compare the target ML model.  
+### Ci_Proposal5(moderate/efficient): make Mutual NearestNeighbors(original: Ci to Ai nearest only, introduce Ai to Ci nearest)
+### Ci_Proposal6(moderate/scratch/efficient): extend NearestNeighbors to k(original: 1-NN only)
+
 

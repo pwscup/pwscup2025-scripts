@@ -17,7 +17,7 @@ def run_and_get_acc(i, run_id):
         return None
 
 def main():
-    with open("out/evalfiles.txt", "w", encoding="utf-8") as f:
+    with open("out/MLacc_files.txt", "w", encoding="utf-8") as f:
         for i in range(1, 4):
             accs = []
             f.write(f"B22_{i} (in/B22_{i}.csv, out/C22_{i}_shuffled.csv)\n")

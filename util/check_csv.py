@@ -10,6 +10,11 @@ from pathlib import Path
 
 YMD_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
+def _decimal_places(d: Decimal) -> int:
+    """Decimal の小数点以下桁数を返す（指数が負ならその絶対値、非負なら 0）。"""
+    exp = d.as_tuple().exponent
+    return -exp if exp < 0 else 0
+
 def main():
     if len(sys.argv) != 3:
         print("Usage: python3 check_csv.py <input.csv> <input.json>")
@@ -56,9 +61,26 @@ def main():
         raw_vals = df[col].map(lambda x: x.strip())
         ctype = col_spec.get("type", "")
 
-        if ctype == "numeric":
-            min_val = Decimal(str(col_spec["min"]))
-            max_val = Decimal(str(col_spec["max"]))
+        if ctype == "number":
+            # min/max は必須
+            try:
+                min_val = Decimal(str(col_spec["min"]))
+                max_val = Decimal(str(col_spec["max"]))
+            except Exception:
+                print(f"エラー: {col} の数値範囲(min/max)がJSONで不正です。")
+                sys.exit(1)
+
+            # max_decimal_places は任意
+            max_places = col_spec.get("max_decimal_places", None)
+            if max_places is not None:
+                try:
+                    max_places = int(max_places)
+                    if max_places < 0:
+                        raise ValueError
+                except Exception:
+                    print(f"エラー: {col} の max_decimal_places が不正です（非負整数で指定）。")
+                    sys.exit(1)
+
             for idx, val in raw_vals.items():
                 if val == "":
                     continue
@@ -68,11 +90,22 @@ def main():
                     all_ok = False
                     errors.append((idx+1, col, val, "数値変換不可"))
                     continue
+
+                # 桁数チェック（指定がある場合）
+                if max_places is not None:
+                    places = _decimal_places(d)
+                    if places > max_places:
+                        all_ok = False
+                        errors.append(
+                            (idx+1, col, val, f"小数点以下{places}桁（許容 {max_places} 桁）")
+                        )
+
+                # 範囲チェック
                 if d < min_val or d > max_val:
                     all_ok = False
                     errors.append((idx+1, col, val, f"{min_val}〜{max_val}の範囲外"))
 
-        elif ctype == "categorical":
+        elif ctype == "category":
             allowed = set(col_spec.get("values", []))
             for idx, val in raw_vals.items():
                 if val == "":
@@ -104,7 +137,9 @@ def main():
                     continue
                 if dt < min_dt or dt > max_dt:
                     all_ok = False
-                    errors.append((idx+1, col, val, f"{min_dt.strftime('%Y-%m-%d')}〜{max_dt.strftime('%Y-%m-%d')}の範囲外"))
+                    errors.append(
+                        (idx+1, col, val, f"{min_dt.strftime('%Y-%m-%d')}〜{max_dt.strftime('%Y-%m-%d')}の範囲外")
+                    )
 
         else:
             print(f"警告: 列 '{col}' のタイプ '{ctype}' は未対応。スキップします。")

@@ -7,24 +7,14 @@
 
 
 ## anonymization
-### B22_1
-python anonymization/ano.py in/B22_1.csv out/C22_1.csv
-python anonymization/randomshuffle_rows.py out/C22_1.csv out/C22_1_shuffled.csv
-python anonymization/gen_Di.py in/B22_1.csv out/C22_1_shuffled.csv out/sample_D22_1.json
-
-### B22_2
-python anonymization/ano.py in/B22_2.csv out/C22_2.csv
-python anonymization/randomshuffle_rows.py out/C22_2.csv out/C22_2_shuffled.csv
-python anonymization/gen_Di.py in/B22_2.csv out/C22_2_shuffled.csv out/sample_D22_2.json
-
 ### B22_3
 python anonymization/ano.py in/B22_3.csv out/C22_3.csv
 python anonymization/randomshuffle_rows.py out/C22_3.csv out/C22_3_shuffled.csv
 python anonymization/gen_Di.py in/B22_3.csv out/C22_3_shuffled.csv out/sample_D22_3.json
 
-### eval C22_*
-python anonymization/evalfiles.py
-output: out/evalfiles.txt
+### evaluation of accuracy C22_*
+python anonymization/MLacc_files.py
+output: out/MLacc_files.txt
 #### This accuracy only depends on the inference errors of "stroke_flag".
 
 ## evaluation
@@ -86,5 +76,8 @@ Ci utility: 57.88374683833037 / 80
 check_csv.py out/test/C22_3_shuffled.csv out\sample_D22_1.json
 
 ## attack
+### example attack is combination of AttackCiNN(in attack_Ci.py), Conf_Attack(in attack_Di.py)and Pred_Attack(in attack_Di.py)
+
 # python attack/attack_example.py -o out/Fij_1.csv out/Ai.csv out/Ci.csv
 
+## 

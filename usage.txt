@@ -76,7 +76,9 @@ Ci utility: 57.88374683833037 / 80
 check_csv.py out/test/C22_3_shuffled.csv out\sample_D22_1.json
 
 ## attack
-### place PWSCUP2025_Pre_Data_for_Attack_**-** in out/
+### create directory "PWSCUP2025_Pre_Data_for_Attack" in out/
+### unzip all "PWSCUP2025_Pre_Data_for_Attack_**" to "out/PWSCUP2025_Pre_Data_for_Attack"
+
 
 ### attackCi is attack of "distance(between Ai and Ci common columns) based". 
 ### attackDi is combination of "Prediction attack" and "Confidence attack".
@@ -97,3 +99,36 @@ check_csv.py out/test/C22_3_shuffled.csv out\sample_D22_1.json
 ### Ci_Proposal6(moderate/scratch/efficient): extend NearestNeighbors to k(original: 1-NN only)
 
 
+## development
+### Ci_attack: extend output record(only 1-NN to k-NN)
+### Di_attack: change output(result(1/0) to original "Confidence" value or best n Confidence)
+### example_1: weight Ci_attack num_k values and Di_attack num_n values
+### example_2: Ci_attack==1 "and" Di_attack==1
+### example: output 10,000-ranked records
+
+### new_attackDi_Ci: score num_n Di_attack answers by Ci_attack distance
+### new_attackDi_Ci: output: 1st-ranked record
+
+## attack_development(Ci_attack)
+### development_version: attack\attack_Ci_ex.ipynb
+### python attack\attack_Ci_ex.py out\PWSCUP2025_Pre_Data_for_Attack\A01.csv out\PWSCUP2025_Pre_Data_for_Attack\C01.csv -o out\C01_inferred_ex.csv -k 1
+#### 1st column: times inferred by Ci_attack(overlapping), 2nd column: minimum distance from NN
+
+### development_version: ex_to_normal.ipynb
+### python attack\ex_to_normal.py out\C01_inferred_ex.csv out\C01_inferred.csv
+#### convert C01_inferred_ex.csv to C01_inferred.csv(no overlapping)
+
+## attack_development(Di_attack)
+
+
+
+## error_fix
+###  python util/check_and_fix_csv.py out\PWSCUP2025_Pre_Data_for_Attack\C01.csv data\pre_columns_range.json out\PWSCUP2025_Pre_Data_for_Attack\C01_fix.csv --report fix_report.csv
+#### create multi version of check_and_fix_csv.py
+#### python multi_check_and_fix.py
+
+### about team 15's ML model
+#### their AGE data is splitted down to 9 BINs
+#### python analysis/validate_model_json.py out\PWSCUP2025_Pre_Data_for_Attack\D15.json
+#### [OK]  out\PWSCUP2025_Pre_Data_for_Attack\D15.json: OK (#features=27, target=stroke_flag, attrs_src=learner)
+#### It doesn't violate PWSCUP rules

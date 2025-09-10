@@ -122,4 +122,13 @@ check_csv.py out/test/C22_3_shuffled.csv out\sample_D22_1.json
 
 
 
-###
+## error_fix
+###  python util/check_and_fix_csv.py out\PWSCUP2025_Pre_Data_for_Attack\C01.csv data\pre_columns_range.json out\PWSCUP2025_Pre_Data_for_Attack\C01_fix.csv --report fix_report.csv
+#### create multi version of check_and_fix_csv.py
+#### python multi_check_and_fix.py
+
+### about team 15's ML model
+#### their AGE data is splitted down to 9 BINs
+#### python analysis/validate_model_json.py out\PWSCUP2025_Pre_Data_for_Attack\D15.json
+#### [OK]  out\PWSCUP2025_Pre_Data_for_Attack\D15.json: OK (#features=27, target=stroke_flag, attrs_src=learner)
+#### It doesn't violate PWSCUP rules

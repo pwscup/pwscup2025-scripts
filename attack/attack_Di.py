@@ -39,6 +39,22 @@ class Attack_Di_Base(ABC):
         
         # 説明変数と目的変数に分割
         X = build_X(Ai_df, TARGET)
+
+        # Xのみにある列は削除する, 9/10追記
+        columns_only_X = set(X.columns) - set(self.xgbt_model.feature_names)
+        if columns_only_X:
+            X = X.drop(columns=columns_only_X)
+
+        # xgbt_model.feature_namesのみにある列は0埋め, 9/10追記
+        columns_only_feature_names = set(self.xgbt_model.feature_names) - set(X.columns)
+        if columns_only_feature_names:
+            for col in columns_only_feature_names:
+                # 0で埋める
+                X[col] = 0
+
+        # Xの列をXGBoostモデルが要求する順番に並び替え, 9/10追記
+        X = X.reindex(columns=self.xgbt_model.feature_names)
+
         X.columns = self.xgbt_model.feature_names
         self.X = X.copy()
         self.y = pd.to_numeric(Ai_df[TARGET], errors="coerce").astype(int).values

@@ -25,7 +25,7 @@ class AttackCiBase(ABC):
             self.inferred.to_csv(path_to_output, index=False, header=False)
             print("inferred was successfully saved.")
     
-class AttackCiNN_extended(AttackCiBase):
+class AttackCiNN(AttackCiBase):
     """
     AttackCiNN の k-NN 拡張
     返り値(2列):
@@ -83,6 +83,6 @@ if __name__ == "__main__":
     ap.add_argument("-k", "--k", default=1, type=int, help="number of nearest neighbors")
     args = ap.parse_args()
 
-    attacker = AttackCiNN_extended(args.path_to_Ci_csv, args.k)
+    attacker = AttackCiNN(args.path_to_Ci_csv, args.k)
     attacker.infer(args.path_to_Ai_csv)
     attacker.save_inferred(args.out)        

@@ -131,4 +131,5 @@ check_csv.py out/test/C22_3_shuffled.csv out\sample_D22_1.json
 #### their AGE data is splitted down to 9 BINs
 #### python analysis/validate_model_json.py out\PWSCUP2025_Pre_Data_for_Attack\D15.json
 #### [OK]  out\PWSCUP2025_Pre_Data_for_Attack\D15.json: OK (#features=27, target=stroke_flag, attrs_src=learner)
-#### It doesn't violate PWSCUP rules
+#### PWSCUP manager fixed attack code(attack_Di)
+

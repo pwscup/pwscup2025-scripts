@@ -2,7 +2,8 @@
 
 ※ サンプルデータやサンプルコードは随時追加や更新されますので、更新日時を確認して最新版を利用するようにしてください。予備戦開始（8/20）後に追加または更新した場合はチーム代表者に連絡します。
 ## 重要な変更
-- (9/4, 21:06) util/check_csv.pyを修正。Ci.csvの値のチェック方法にバグがあったため修正。util/check_and_fix_csv.pyを追加。Ciの軽微なフォーマット違反を修正する。
+- (9/11, 08:25) attack/attack_Di.pyを改修。運営が意図しない特徴量を使うモデルDiに対してもattack_Di.pyとattack_example.pyが攻撃を強制的に実行 [PR#30](https://github.com/pwscup/pwscup2025-scripts/pull/30)
+- (9/04, 21:06) util/check_csv.pyを修正。Ci.csvの値のチェック方法にバグがあったため修正。util/check_and_fix_csv.pyを追加。Ciの軽微なフォーマット違反を修正する。
 - (8/29, 13:01) ↓の正規化方法が不適切で誤差が0になるべき入出力で誤差が0.5になる問題を修正 [PR#21](https://github.com/pwscup/pwscup2025-scripts/pull/21)
 - (8/28, 15:16) evaluation/LR_asthma_diff.py のcoefに関する採点で正規化が行われていなかったため、正規化処理を追加 [PR#19](https://github.com/pwscup/pwscup2025-scripts/pull/19)
 

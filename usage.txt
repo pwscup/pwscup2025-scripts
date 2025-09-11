@@ -119,6 +119,56 @@ check_csv.py out/test/C22_3_shuffled.csv out\sample_D22_1.json
 #### convert C01_inferred_ex.csv to C01_inferred.csv(no overlapping)
 
 ## attack_development(Di_attack)
+### development_version: attack\attack_Di.ipynb
+### development_version: attack\attack_Di_ex.ipynb
+"""
+Usage examples:
+    # Minimum run: Pred=threshold 0.5 (default), Conf=threshold 0.1 (default)
+    python attack_Di_ex.py D15.json A15.csv
+
+    # Apply a common threshold of 0.5 to both Pred and Conf
+    python attack_Di_ex.py D15.json A15.csv --threshold 0.5
+
+    # Use different thresholds: Pred=0.4, Conf=0.08
+    python attack_Di_ex.py D15.json A15.csv --pred-threshold 0.4 --conf-threshold 0.08
+
+    # Pred selects exactly top-10,000 rows, Conf selects 10% of rows
+    python attack_Di_ex.py D15.json A15.csv --pred-topk 10000 --conf-pos-ratio 0.10
+
+    # Both Pred and Conf select top-10,000 rows
+    python attack_Di_ex.py D15.json A15.csv --pred-topk 10000 --conf-topk 10000
+
+    # Change output file names
+    python attack_Di_ex.py D15.json A15.csv --out-pred pred_15.csv --out-conf conf_15.csv
+
+Options:
+    model_json            Path to trained XGBoost model in JSON format (e.g., D15.json)
+    Ai_csv                Path to Ai data CSV (e.g., A15.csv)
+
+    --threshold T         (Legacy) Apply the same threshold T to both Pred and Conf.
+                          Ignored if specific thresholds or topk/ratio are provided.
+
+    --pred-threshold TP   Threshold for Pred_Attack (default=0.5).
+                          Only used if --pred-topk/--pred-pos-ratio are not set.
+    --pred-topk K         Pred_Attack: select exactly K rows as members (overrides threshold).
+    --pred-pos-ratio R    Pred_Attack: select round(R*N) rows as members (when topk not set).
+
+    --conf-threshold TC   Threshold for Conf_Attack (default=0.1, |p - y| <= TC).
+                          Only used if --conf-topk/--conf-pos-ratio are not set.
+    --conf-topk K         Conf_Attack: select exactly K rows with smallest |p - y|.
+    --conf-pos-ratio R    Conf_Attack: select round(R*N) rows (when topk not set).
+
+    --out-pred PATH       Output file for Pred_Attack results
+                          (default: inferred_membership1_ex.csv)
+    --out-conf PATH       Output file for Conf_Attack results
+                          (default: inferred_membership2_ex.csv)
+
+Notes:
+    - Priority order within each attack: topk > pos_ratio > threshold.
+    - Outputs are 1-column CSV files (0/1 values, no header, no index).
+    - Features are automatically reindexed to match model.feature_names;
+      missing columns are filled with zeros.
+"""
 
 
 

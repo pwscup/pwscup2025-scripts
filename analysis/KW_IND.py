@@ -37,7 +37,8 @@ def make_age_groups_by_custom_bins(age_series: pd.Series, custom_bins: list[floa
     labels = []
     for i in range(len(bins) - 1):
         a, b = bins[i], bins[i + 1]
-        labels.append(f"{int(a)}+" if i == len(bins) - 2 else f"{int(a)}–{int(b)-1}")
+        # Use ASCII hyphen for ranges to avoid Windows cp932 encode errors
+        labels.append(f"{int(a)}+" if i == len(bins) - 2 else f"{int(a)}-{int(b)-1}")
     finite_max = np.nanmax(age.values) if np.isfinite(np.nanmax(age.values)) else bins[-1]
     extended = bins.copy()
     extended[-1] = max(bins[-1], finite_max) + 1e-9
@@ -369,7 +370,8 @@ def main():
 
     pd.set_option("display.max_columns", None)
     with pd.option_context('display.float_format', lambda x: f"{x:.6g}"):
-        print("\n=== Kruskal–Wallis + 0–1 Effect Measures + H Normalization (custom age bins) ===")
+        # Use ASCII dashes to avoid Windows cp932 encoding issues
+        print("\n=== Kruskal-Wallis + 0-1 Effect Measures + H Normalization (custom age bins) ===")
         print(out.to_string(index=False))
 
 if __name__ == "__main__":

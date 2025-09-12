@@ -104,7 +104,7 @@ def eval_diff(df1: pd.DataFrame, df2: pd.DataFrame,
             print(f"AUC (file2): {auc2:.6f}")
             print(f"AUC_DIFF   : {auc2 - auc1:.6f}")
 
-            print("\n=== Logistic regression DIFF (file2 - file1) — const excluded; values are differences ===")
+            print("\n=== Logistic regression DIFF (file2 - file1) - const excluded; values are differences ===")
             print(diff.to_string(index=False))
 
     # 保存（任意）

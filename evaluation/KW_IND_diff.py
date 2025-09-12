@@ -137,7 +137,8 @@ def eval_diff(df1: pd.DataFrame, df2:pd.DataFrame,
         with pd.option_context("display.max_columns", None,
                                "display.width", None,
                                "display.float_format", lambda x: f"{x:.6g}"):
-            print("\n=== KW_IND Diff (file2 - file1) — H_norm / p_norm / effect sizes (0–1) ===")
+            # Use ASCII dashes to avoid Windows cp932 encoding issues
+            print("\n=== KW_IND Diff (file2 - file1) - H_norm / p_norm / effect sizes (0-1) ===")
             print(diff.to_string(index=False))
 
     # 保存オプション

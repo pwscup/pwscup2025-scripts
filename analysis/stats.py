@@ -28,7 +28,8 @@ EXPECTED_CATEGORICAL_LEVELS = {
     "GENDER": ["M", "F", "O", "U"],
     "RACE": ["asian", "black", "white", "native", "hawaiian", "other", "unknown"],
     "ETHNICITY": ["hispanic", "nonhispanic", "unknown"],
-    "AGE_GROUP": ["0–17", "18–44", "45–64", "65–74", "75+"],
+    # Use ASCII hyphens in age group labels to avoid Windows cp932 encode errors
+    "AGE_GROUP": ["0-17", "18-44", "45-64", "65-74", "75+"],
     "asthma_flag": [0, 1],
     "stroke_flag": [0, 1],
     "obesity_flag": [0, 1],

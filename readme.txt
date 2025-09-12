@@ -77,6 +77,18 @@ Prepare data for attacks
   - `python attack\attack_example_ex.py --Ai_csv out\PWSCUP2025_Pre_Data_for_Attack\A22.csv -o out\Fij_22.csv out\C22_inferred.csv out\inferred_membership1_22_ex.csv out\inferred_membership2_22_ex.csv`
   - Enforce 10,000 positives: `python attack\attack_example_ex.py --Ai_csv out\PWSCUP2025_Pre_Data_for_Attack\A22.csv -o out\Fij_22.csv -l 10000 out\C22_inferred.csv out\inferred_membership1_22_ex.csv out\inferred_membership2_22_ex.csv`
 
+- New Di->Ci scoring attack:
+  - Purpose: select candidates with Di (Pred/Conf), then rank by Ci k-NN distance and pick top-N.
+  - Example: `python attack\new_attackDi_Ci.py out\PWSCUP2025_Pre_Data_for_Attack\A22.csv out\PWSCUP2025_Pre_Data_for_Attack\C22_fix.csv out\PWSCUP2025_Pre_Data_for_Attack\D22.json --pred-topk 10000 --conf-topk 10000 --mode union -k 5 --topn 10000 -o out\Fij_new_22.csv --out-rank out\Fij_new_22_rank.csv`
+  - Key options:
+    - Pred: `--pred-threshold`, `--pred-topk`, `--pred-pos-ratio` (priority: topk > ratio > threshold)
+    - Conf: `--conf-threshold`, `--conf-topk`, `--conf-pos-ratio` (priority: topk > ratio > threshold)
+    - Combine Pred/Conf: `--mode {union,intersection}` (default: union)
+    - Ci stats: `-k` neighbors (default: 5). Score = `w_hits * knn_hits - w_dist * min_dist`.
+      - Weights: `--w-hits` (default 0.0), `--w-dist` (default 1.0)
+    - Output control: `--topn` positives (default: 1), `-o/--out` output CSV, `--out-rank` to export ranking table
+    - Fallback: if Di yields 0 candidates, ranks all rows by Ci distance (warns in stdout)
+
 - Batch helpers:
   - Notebooks and script: `attack\multi_attack.ipynb`, `attack\multi_attack.py`
 

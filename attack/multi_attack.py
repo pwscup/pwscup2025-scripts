@@ -176,5 +176,5 @@ New_DiCi_scoring = [
     "-o", "out/Fij_new_{id:02d}.csv",
     "--out-rank", "out/Fij_new_{id:02d}_rank.csv",
 ]
-loop_for_all_teams(New_DiCi_scoring, [3, 6, 12])
+loop_for_all_teams(New_DiCi_scoring)
 print(f"new Di->Ci scoring attack completed")

@@ -77,6 +77,18 @@ PWSCUP 2025 Scripts — 実践ガイド（日本語）
   - `python attack\attack_example_ex.py --Ai_csv out\PWSCUP2025_Pre_Data_for_Attack\A22.csv -o out\Fij_22.csv out\C22_inferred.csv out\inferred_membership1_22_ex.csv out\inferred_membership2_22_ex.csv`
   - 1 の個数を 10,000 に制限: `python attack\attack_example_ex.py --Ai_csv out\PWSCUP2025_Pre_Data_for_Attack\A22.csv -o out\Fij_22.csv -l 10000 out\C22_inferred.csv out\inferred_membership1_22_ex.csv out\inferred_membership2_22_ex.csv`
 
+- 新しい Di→Ci スコアリング攻撃
+  - 目的: Di（Pred/Conf）で候補を抽出し、Ci の k-NN 距離で順位付けして上位 N を選択
+  - 例: `python attack\new_attackDi_Ci.py out\PWSCUP2025_Pre_Data_for_Attack\A22.csv out\PWSCUP2025_Pre_Data_for_Attack\C22_fix.csv out\PWSCUP2025_Pre_Data_for_Attack\D22.json --pred-topk 10000 --conf-topk 10000 --mode union -k 5 --topn 10000 -o out\Fij_new_22.csv --out-rank out\Fij_new_22_rank.csv`
+  - 主なオプション:
+    - Pred 選択: `--pred-threshold`, `--pred-topk`, `--pred-pos-ratio`（優先度: topk > ratio > threshold）
+    - Conf 選択: `--conf-threshold`, `--conf-topk`, `--conf-pos-ratio`（優先度: topk > ratio > threshold）
+    - Pred/Conf の結合: `--mode {union,intersection}`（既定: union）
+    - Ci 指標: `-k` 近傍（既定: 5）。スコアは `w_hits * knn_hits - w_dist * min_dist`
+      - 重み: `--w-hits`（既定 0.0）, `--w-dist`（既定 1.0）
+    - 出力制御: `--topn`（既定: 1）, `-o/--out` 出力 CSV, `--out-rank` 順位表を保存
+    - フォールバック: Di 候補が 0 件のとき、Ci 距離のみで全行を順位付け（標準出力に警告を表示）
+
 - バッチ実行
   - `attack\multi_attack.ipynb`, `attack\multi_attack.py`
 

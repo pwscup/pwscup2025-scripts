@@ -213,3 +213,7 @@ Notes:
 ## batch
 ### attack\multi_attack.ipynb
 ### attack\multi_attack.py
+
+### utility for submission
+### util\csv_maker_attack.ipynb
+#### Team03/12 files are original Bi, so editted the CSV by Ci_attack(Original) result.

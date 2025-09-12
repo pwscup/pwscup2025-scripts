@@ -106,8 +106,8 @@ check_csv.py out/test/C22_3_shuffled.csv out\sample_D22_1.json
 ### example_2: Ci_attack==1 "and" Di_attack==1
 ### example: output 10,000-ranked records
 
-### new_attackDi_Ci: score num_n Di_attack answers by Ci_attack distance
-### new_attackDi_Ci: output: 1st-ranked record
+### new_attackDi_Ci: score Di-selected candidates by Ci distance and |pred - y|
+### new_attackDi_Ci: output: top-N records (default 1)
 
 """
 new_attackDi_Ci.py — Rank Di-selected candidates by Ci distance and select top-N
@@ -117,14 +117,14 @@ Quick examples:
     python attack\new_attackDi_Ci.py out\PWSCUP2025_Pre_Data_for_Attack\A22.csv \
         out\PWSCUP2025_Pre_Data_for_Attack\C22_fix.csv \
         out\PWSCUP2025_Pre_Data_for_Attack\D22.json \
-        --pred-topk 10000 --conf-topk 10000 --mode union -k 5 --topn 10000 \
+        --pred-topk 10000 --conf-topk 10000 --mode union -k 5 --w-conf 1.0 --topn 10000 \
         -o out\Fij_new_22.csv --out-rank out\Fij_new_22_rank.csv
 
     # Threshold-based selection; pick only the single best row (default topn=1)
     python attack\new_attackDi_Ci.py out\PWSCUP2025_Pre_Data_for_Attack\A15.csv \
         out\PWSCUP2025_Pre_Data_for_Attack\C15_fix.csv \
         out\PWSCUP2025_Pre_Data_for_Attack\D15.json \
-        --pred-threshold 0.6 --conf-threshold 0.05 -k 3 -o out\Fij_15.csv
+        --pred-threshold 0.6 --conf-threshold 0.05 -k 3 --w-conf 1.0 -o out\Fij_15.csv
 
 CLI:
     python attack\new_attackDi_Ci.py Ai_csv Ci_csv Di_json [options]
@@ -147,6 +147,7 @@ Options:
     -k K, --k K            k neighbors for Ci k-NN stats (default: 5)
     --w-hits WH            Weight for knn_hits in score (default: 0.0)
     --w-dist WD            Weight for min_dist in score; larger penalizes distance (default: 1.0)
+    --w-conf WC            Weight for |pred - y| from Di (smaller is better) (default: 1.0)
 
     --topn N               Number of Ai rows to mark as 1 (default: 1)
     -o PATH, --out PATH    Output CSV path (1 column, no header; default: Fij.csv)
@@ -155,7 +156,7 @@ Options:
 Notes:
     - Within Pred/Conf selection, priority is topk > pos_ratio > threshold.
     - If Di selection yields 0 candidates, all rows are ranked by Ci distance with a warning.
-    - Score definition: score = (w_hits * knn_hits) - (w_dist * min_dist).
+    - Score definition: score = (w_hits * knn_hits) - (w_dist * min_dist) - (w_conf * |pred - y|).
 """
 
 ## attack_development(Ci_attack)

@@ -161,8 +161,8 @@ print(f"extended combination attack completed")
 
 
 # %%
-# New Di->Ci scoring attack (union of Di selections, rank by Ci distance)
-# Example knobs: pred/conf topk=10000, k=5, select topn=10000
+# New Di->Ci scoring attack (union of Di selections, rank by Ci distance and |pred - y|)
+# Example knobs: pred/conf topk=10000, k=5, w_conf=1.0, select topn=10000
 New_DiCi_scoring = [
     "python", "attack/new_attackDi_Ci.py",
     "out/PWSCUP2025_Pre_Data_for_Attack/A{id:02d}.csv",
@@ -172,6 +172,7 @@ New_DiCi_scoring = [
     "--conf-topk", "10000",
     "--mode", "union",
     "-k", "5",
+    "--w-conf", "1.0",
     "--topn", "10000",
     "-o", "out/Fij_new_{id:02d}.csv",
     "--out-rank", "out/Fij_new_{id:02d}_rank.csv",

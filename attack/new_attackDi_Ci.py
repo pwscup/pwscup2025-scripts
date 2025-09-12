@@ -17,13 +17,15 @@ class NewAttackDiCi(ABC):
     - Ci step: compute k-NN stats (hits, min_dist) for Ai vs Ci; rank
       candidates primarily by smaller min_dist (optionally include hits).
     """
-    def __init__(self, ci_csv, di_json, k=5, mode="union", w_hits=0.0, w_dist=1.0, topn=1):
+    def __init__(self, ci_csv, di_json, k=5, mode="union", w_hits=0.0, w_dist=1.0, w_conf=1.0, topn=1):
         self.ci_csv = ci_csv
         self.di_json = di_json
         self.k = int(k)
         self.mode = mode
         self.w_hits = float(w_hits)
         self.w_dist = float(w_dist)
+        # Smaller |pred - y| is better; weight defaults to 1.0
+        self.w_conf = float(w_conf)
         self.topn = int(topn)
 
         self.inferred = None
@@ -50,15 +52,17 @@ class NewAttackDiCi(ABC):
                            pos_ratio=conf_pos_ratio)
         _ = conf.infer(ai_csv)
         s_conf = conf.inferred.iloc[:, 0].astype(int).values
+        # Capture |pred - y| vector from Conf_Attack (added attribute)
+        conf_score = getattr(conf, "score_", None)
 
         if self.mode == "intersection":
             cand = (s_pred & s_conf).astype(int)
         else:
             cand = (s_pred | s_conf).astype(int)
 
-        return cand, s_pred, s_conf
+        return cand, s_pred, s_conf, conf_score
 
-    def _score_with_ci(self, ai_csv):
+    def _score_with_ci(self, ai_csv, conf_score=None):
         ci = AttackCiKNN(self.ci_csv, self.k)
         df = ci.infer(ai_csv)
         # hits: larger is better; min_dist: smaller is better
@@ -66,13 +70,16 @@ class NewAttackDiCi(ABC):
         md = df.iloc[:, 1].to_numpy()
         # Convert to score where larger is better
         score = self.w_hits * hits - self.w_dist * md
+        if conf_score is not None:
+            # Smaller |pred - y| is better → subtract with weight
+            score = score - self.w_conf * conf_score
         return score, hits, md
 
     def infer(self, ai_csv,
               pred_threshold=0.5, pred_topk=None, pred_pos_ratio=None,
               conf_threshold=0.1, conf_topk=None, conf_pos_ratio=None):
         # Di step
-        cand, s_pred, s_conf = self._select_di(
+        cand, s_pred, s_conf, conf_score = self._select_di(
             ai_csv,
             pred_threshold=pred_threshold, pred_topk=pred_topk, pred_pos_ratio=pred_pos_ratio,
             conf_threshold=conf_threshold, conf_topk=conf_topk, conf_pos_ratio=conf_pos_ratio,
@@ -80,7 +87,7 @@ class NewAttackDiCi(ABC):
         n = cand.shape[0]
 
         # Ci step scoring
-        score, hits, md = self._score_with_ci(ai_csv)
+        score, hits, md = self._score_with_ci(ai_csv, conf_score=conf_score)
 
         # Restrict to candidates if any; otherwise fall back to all rows
         if cand.sum() > 0:
@@ -101,14 +108,18 @@ class NewAttackDiCi(ABC):
             sel[ranked_idx[:k]] = 1
 
         # Save rank table for debugging
-        self.rank_table_ = pd.DataFrame({
+        data = {
             "ai_idx": ranked_idx,
             "score": score[ranked_idx],
             "knn_hits": hits[ranked_idx],
             "min_dist": md[ranked_idx],
             "pred_sel": s_pred[ranked_idx],
             "conf_sel": s_conf[ranked_idx],
-        })
+        }
+        if conf_score is not None:
+            data["conf_abs_err"] = conf_score[ranked_idx]
+
+        self.rank_table_ = pd.DataFrame(data)
 
         self.inferred = pd.DataFrame(sel)
         print(f"[NewAttackDiCi] selected={int(sel.sum())}/{n} (topn={self.topn}, candidates={int(mask.sum())})")
@@ -143,6 +154,7 @@ if __name__ == "__main__":
     ap.add_argument("-k", "--k", type=int, default=5, help="k neighbors for Ci k-NN stats")
     ap.add_argument("--w-hits", type=float, default=0.0, help="weight for knn_hits in score")
     ap.add_argument("--w-dist", type=float, default=1.0, help="weight for min_dist in score (larger penalizes distance)")
+    ap.add_argument("--w-conf", type=float, default=1.0, help="weight for |pred - y| from Di (smaller is better)")
 
     # Output control
     ap.add_argument("--topn", type=int, default=1, help="number of Ai rows to mark as 1 (default: 1)")
@@ -158,6 +170,7 @@ if __name__ == "__main__":
         mode=args.mode,
         w_hits=args.w_hits,
         w_dist=args.w_dist,
+        w_conf=args.w_conf,
         topn=args.topn,
     )
 

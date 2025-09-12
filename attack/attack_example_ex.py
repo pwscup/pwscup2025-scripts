@@ -3,16 +3,7 @@ import argparse
 
 import pandas as pd
 import numpy as np
-from sklearn.neighbors import NearestNeighbors
 
-from attack_Ci import AttackCiNN
-from attack_Di import Conf_Attack, Pred_Attack
-
-## csvから攻撃結果を読み込むバージョン
-from abc import ABC, abstractmethod
-import argparse
-import pandas as pd
-import numpy as np
 
 class AttackBase(ABC):
     def __init__(self):
@@ -28,6 +19,7 @@ class AttackBase(ABC):
         else:
             self.inferred.to_csv(path_to_output, index=False, header=False)
             print(f"inferred was successfully saved as {path_to_output}")
+
 
 def _load_ci_binary(path, expected_len=None):
     """
@@ -48,6 +40,7 @@ def _load_ci_binary(path, expected_len=None):
 
     return ci_bin.reset_index(drop=True)
 
+
 def _load_di_binary(path, expected_len=None):
     """
     Load Di result (Pred/Conf):
@@ -60,6 +53,7 @@ def _load_di_binary(path, expected_len=None):
     if expected_len is not None and len(s) != expected_len:
         raise ValueError(f"Length mismatch for Di: got {len(s)} vs expected {expected_len}")
     return s.reset_index(drop=True)
+
 
 class MixAttack(AttackBase):
     def __init__(self, path_to_Ci_result, path_to_Di_result_pred, path_to_Di_result_conf,
@@ -98,6 +92,7 @@ class MixAttack(AttackBase):
               f"(Ci sum={int(ci_bin.sum())}, Pred sum={int(di_pred.sum())}, Conf sum={int(di_conf.sum())})")
         return self.inferred
 
+
 # --- CLI ---
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description="Mix Ci/Di attack votes to infer membership on Ai")
@@ -110,7 +105,7 @@ if __name__ == "__main__":
                     help="limit top-k rows to 1 (e.g., -l 10000). If omitted, use majority rule (>=2).")
     args = ap.parse_args()
 
-    # optional: validate length using Ai.csv (headerあり想定)
+    # optional: validate length using Ai.csv (only for consistency checks)
     ai_len = None
     if args.Ai_csv:
         try:
@@ -129,3 +124,4 @@ if __name__ == "__main__":
                          limit=args.limit)
     attacker.infer()
     attacker.save_inferred(args.output)
+

@@ -199,13 +199,13 @@ Notes:
 # Ci_attack(original/extended/greedy)
 ## python attack\attack_Ci.py out\PWSCUP2025_Pre_Data_for_Attack\A22.csv out\PWSCUP2025_Pre_Data_for_Attack\C22_fix.csv -o out\C22_inferred.csv
 ## python attack\attack_Ci_ex.py out\PWSCUP2025_Pre_Data_for_Attack\A22.csv out\PWSCUP2025_Pre_Data_for_Attack\C22_fix.csv -o out\C22_inferred_ex.csv -k 1
-## python attack_Ci_ex_greedy.py out\PWSCUP2025_Pre_Data_for_Attack\C22_fix.csv out\PWSCUP2025_Pre_Data_for_Attack\A22.csv -m nn -k 5 -o out\C22_inferred_ex_greedy_k5_nn.csv
-## python attack_Ci_ex_greedy.py out\PWSCUP2025_Pre_Data_for_Attack\C22_fix.csv out\PWSCUP2025_Pre_Data_for_Attack\A22.csv -m greedy -k 20  -o out\C22_inferred_ex_greedy_k20_greedy.csv --out-map out\C22_matchmap_k20.csv
+## python attack\attack_Ci_ex_greedy.py out\PWSCUP2025_Pre_Data_for_Attack\C22_fix.csv out\PWSCUP2025_Pre_Data_for_Attack\A22.csv -m nn -k 5 -o out\C22_inferred_ex_greedy_k5_nn.csv
+## python attack\attack_Ci_ex_greedy.py out\PWSCUP2025_Pre_Data_for_Attack\C22_fix.csv out\PWSCUP2025_Pre_Data_for_Attack\A22.csv -m greedy -k 20  -o out\C22_inferred_ex_greedy_k20_greedy.csv --out-map out\C22_matchmap_k20.csv
 
 # Di_attack(original/extended)
 ## python attack\attack_Di.py out\PWSCUP2025_Pre_Data_for_Attack\D22.json out\PWSCUP2025_Pre_Data_for_Attack\A22.csv
-## python attack\attack_Di_ex.py out\PWSCUP2025_Pre_Data_for_Attack\D22.json out\PWSCUP2025_Pre_Data_for_Attack\A22.csv [--pred-threshold 0.5] [--pred-topk 10000] [--pred-pos-ratio 0.10] [--conf-threshold 0.1] [--conf-topk 10000] [--conf-pos-ratio 0.10] --out-pred inferred_membership1_22_ex.csv --out-conf inferred_membership2_22_ex.csv
+## python attack\attack_Di_ex.py out\PWSCUP2025_Pre_Data_for_Attack\D22.json out\PWSCUP2025_Pre_Data_for_Attack\A22.csv [--pred-threshold 0.5] [--pred-topk 10000] [--pred-pos-ratio 0.10] [--conf-threshold 0.1] [--conf-topk 10000] [--conf-pos-ratio 0.10] --out-pred out/inferred_membership1_22_ex.csv --out-conf out/inferred_membership2_22_ex.csv
 
 # combination_attack(original/limit)
-## python attack\attack_example_ex.py out\PWSCUP2025_Pre_Data_for_Attack\A22.csv out\C22_inferred.csv inferred_membership1_22_ex.csv inferred_membership2_22_ex.csv -o out\Fij_22.csv.csv
-## python attack\attack_example_ex.py out\PWSCUP2025_Pre_Data_for_Attack\A22.csv out\C22_inferred.csv inferred_membership1_22_ex.csv inferred_membership2_22_ex.csv -o out\Fij_22.csv.csv -l 10000
+## python attack\attack_example_ex.py --Ai_csv out\PWSCUP2025_Pre_Data_for_Attack\A22.csv -o out\Fij_22.csv out\C22_inferred.csv out\inferred_membership1_22_ex.csv out\inferred_membership2_22_ex.csv
+## python attack\attack_example_ex.py --Ai_csv out\PWSCUP2025_Pre_Data_for_Attack\A22.csv -o out\Fij_22.csv -l 10000 out\C22_inferred.csv out\inferred_membership1_22_ex.csv out\inferred_membership2_22_ex.csv

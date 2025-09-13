@@ -1,0 +1,77 @@
+--out-rank out/Fij_independent_17_rank.csv --out-map out/C17_matchmap_independent.csv\n",
+      "[auto-wdist] N=15, C=3, denom=21, w_dist_eff=0.047619\n",
+      "[AttackCiDiIndependent] selected=10000/100000 (topn=10000)\n",
+      "inferred was successfully saved as out/Fij_independent_17.csv\n",
+      "rank table was successfully saved as out/Fij_independent_17_rank.csv\n",
+      "match table was successfully saved as out/C17_matchmap_independent.csv\n",
+      ">> c:\\Users\\kikus\\AppData\\Local\\Programs\\Python\\Python313\\python.exe attack/attack_Ci_Di_independent.py out/PWSCUP2025_Pre_Data_for_Attack/A18.csv out/PWSCUP2025_Pre_Data_for_Attack/C18_fix.csv out/PWSCUP2025_Pre_Data_for_Attack/D18.json --w-conf 1.0 --auto-wdist --k-hint 300 --topn 10000 -o out/Fij_independent_18.csv --out-rank out/Fij_independent_18_rank.csv --out-map out/C18_matchmap_independent.csv\n",
+      "[auto-wdist] N=15, C=3, denom=21, w_dist_eff=0.047619\n",
+      "[AttackCiDiIndependent] selected=10000/100000 (topn=10000)\n",
+      "inferred was successfully saved as out/Fij_independent_18.csv\n",
+      "rank table was successfully saved as out/Fij_independent_18_rank.csv\n",
+      "match table was successfully saved as out/C18_matchmap_independent.csv\n",
+      ">> c:\\Users\\kikus\\AppData\\Local\\Programs\\Python\\Python313\\python.exe attack/attack_Ci_Di_independent.py out/PWSCUP2025_Pre_Data_for_Attack/A19.csv out/PWSCUP2025_Pre_Data_for_Attack/C19_fix.csv out/PWSCUP2025_Pre_Data_for_Attack/D19.json --w-conf 1.0 --auto-wdist --k-hint 300 --topn 10000 -o out/Fij_independent_19.csv --out-rank out/Fij_independent_19_rank.csv --out-map out/C19_matchmap_independent.csv\n",
+      "[auto-wdist] N=15, C=3, denom=21, w_dist_eff=0.047619\n",
+      "[AttackCiDiIndependent] selected=10000/100000 (topn=10000)\n",
+      "inferred was successfully saved as out/Fij_independent_19.csv\n",
+      "rank table was successfully saved as out/Fij_independent_19_rank.csv\n",
+      "match table was successfully saved as out/C19_matchmap_independent.csv\n",
+      ">> c:\\Users\\kikus\\AppData\\Local\\Programs\\Python\\Python313\\python.exe attack/attack_Ci_Di_independent.py out/PWSCUP2025_Pre_Data_for_Attack/A20.csv out/PWSCUP2025_Pre_Data_for_Attack/C20_fix.csv out/PWSCUP2025_Pre_Data_for_Attack/D20.json --w-conf 1.0 --auto-wdist --k-hint 300 --topn 10000 -o out/Fij_independent_20.csv --out-rank out/Fij_independent_20_rank.csv --out-map out/C20_matchmap_independent.csv\n",
+      "[auto-wdist] N=15, C=3, denom=21, w_dist_eff=0.047619\n",
+      "[AttackCiDiIndependent] selected=10000/100000 (topn=10000)\n",
+      "inferred was successfully saved as out/Fij_independent_20.csv\n",
+      "rank table was successfully saved as out/Fij_independent_20_rank.csv\n",
+      "match table was successfully saved as out/C20_matchmap_independent.csv\n",
+      ">> c:\\Users\\kikus\\AppData\\Local\\Programs\\Python\\Python313\\python.exe attack/attack_Ci_Di_independent.py out/PWSCUP2025_Pre_Data_for_Attack/A22.csv out/PWSCUP2025_Pre_Data_for_Attack/C22_fix.csv out/PWSCUP2025_Pre_Data_for_Attack/D22.json --w-conf 1.0 --auto-wdist --k-hint 300 --topn 10000 -o out/Fij_independent_22.csv --out-rank out/Fij_independent_22_rank.csv --out-map out/C22_matchmap_independent.csv\n",
+      "[auto-wdist] N=15, C=3, denom=21, w_dist_eff=0.047619\n",
+      "[AttackCiDiIndependent] selected=10000/100000 (topn=10000)\n",
+      "inferred was successfully saved as out/Fij_independent_22.csv\n",
+      "rank table was successfully saved as out/Fij_independent_22_rank.csv\n",
+      "match table was successfully saved as out/C22_matchmap_independent.csv\n",
+      "independent Ci+Di (greedy) scoring completed\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Independent Ci+Di (greedy Ci distance + Di |pred - y|)\n",
+    "Ci_Di_independent = [\n",
+    "    \"python\", \"attack/attack_Ci_Di_independent.py\",\n",
+    "    \"out/PWSCUP2025_Pre_Data_for_Attack/A{id:02d}.csv\",\n",
+    "    \"out/PWSCUP2025_Pre_Data_for_Attack/C{id:02d}_fix.csv\",\n",
+    "    \"out/PWSCUP2025_Pre_Data_for_Attack/D{id:02d}.json\",\n",
+    "    \"--w-conf\", \"1.0\",\n",
+    "    # \"--auto-wdist\",\n",
+    "    \"--k-hint\", \"300\",\n",
+    "    \"--topn\", \"10000\",\n",
+    "    \"-o\", \"out/Fij_independent_{id:02d}.csv\",\n",
+    "    \"--out-rank\", \"out/Fij_independent_{id:02d}_rank.csv\",\n",
+    "    \"--out-map\", \"out/C{id:02d}_matchmap_independent.csv\",\n",
+    "]\n",
+    "loop_for_all_teams(Ci_Di_independent)\n",
+    "print(f\"independent Ci+Di (greedy) scoring completed\")"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.13.7"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
+

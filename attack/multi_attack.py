@@ -128,6 +128,23 @@ loop_for_all_teams(Ci_attack_greedy)
 print(f"greedy-k-NN Ci-attack completed")
 
 # %%
+## Attack of Ci with Hungarian assignment (min-sum matching)
+# For large |Ai|×|Ci|, 'knn' mode is recommended (use top-k candidates per Ci).
+hung_mode = "knn"  # use "auto" to try full when feasible
+k_hung = 300       # number of Ai candidates per Ci in knn mode
+Ci_attack_hungarian = [
+    "python", "attack/attack_Ci_hungarian.py",
+    "out/PWSCUP2025_Pre_Data_for_Attack/A{id:02d}.csv",
+    "out/PWSCUP2025_Pre_Data_for_Attack/C{id:02d}_fix.csv",
+    "-m", hung_mode,
+    "-k", str(k_hung),
+    "-o", f"out/C{{id:02d}}_inferred_hungarian_{hung_mode}_k{k_hung}.csv",
+    "--out-map", f"out/C{{id:02d}}_matchmap_hungarian_{hung_mode}_k{k_hung}.csv",
+]
+loop_for_all_teams(Ci_attack_hungarian)
+print(f"Hungarian Ci-attack completed")
+
+# %%
 ## Attack of Di with original samples
 Di_attack_original = ["python", "attack/attack_Di.py", "out/PWSCUP2025_Pre_Data_for_Attack/D{id:02d}.json", "out/PWSCUP2025_Pre_Data_for_Attack/A{id:02d}.csv"]
 loop_for_all_teams(Di_attack_original)

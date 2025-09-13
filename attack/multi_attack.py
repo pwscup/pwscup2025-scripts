@@ -162,17 +162,18 @@ print(f"extended combination attack completed")
 
 # %%
 # New Di->Ci scoring attack (union of Di selections, rank by Ci distance and |pred - y|)
-# Example knobs: pred/conf topk=10000, k=5, w_conf=1.0, select topn=10000
+# Example knobs: threshold-based (broader candidates), k=5, w_conf=1.0, select topn=10000
 New_DiCi_scoring = [
     "python", "attack/new_attackDi_Ci.py",
     "out/PWSCUP2025_Pre_Data_for_Attack/A{id:02d}.csv",
     "out/PWSCUP2025_Pre_Data_for_Attack/C{id:02d}_fix.csv",
     "out/PWSCUP2025_Pre_Data_for_Attack/D{id:02d}.json",
-    "--pred-topk", "10000",
-    "--conf-topk", "10000",
+    "--pred-threshold", "0.5",
+    "--conf-threshold", "0.3",
     "--mode", "union",
     "-k", "5",
     "--w-conf", "1.0",
+    "--auto-wdist",
     "--topn", "10000",
     "-o", "out/Fij_new_{id:02d}.csv",
     "--out-rank", "out/Fij_new_{id:02d}_rank.csv",
@@ -187,13 +188,15 @@ New_DiCi_scoring_greedy = [
     "out/PWSCUP2025_Pre_Data_for_Attack/A{id:02d}.csv",
     "out/PWSCUP2025_Pre_Data_for_Attack/C{id:02d}_fix.csv",
     "out/PWSCUP2025_Pre_Data_for_Attack/D{id:02d}.json",
-    "--pred-topk", "10000",
-    "--conf-topk", "10000",
+    "--pred-threshold", "0.5",
+    "--conf-threshold", "0.3",
     "--mode", "union",
     "--w-conf", "1.0",
+    "--auto-wdist",
     "--topn", "10000",
     "-o", "out/Fij_new_greedy_{id:02d}.csv",
     "--out-rank", "out/Fij_new_greedy_{id:02d}_rank.csv",
+    "--out-map", "out/C{id:02d}_matchmap_greedy.csv",
 ]
 loop_for_all_teams(New_DiCi_scoring_greedy)
 print(f"new Di->Ci scoring (greedy) completed")

@@ -148,6 +148,7 @@ Options:
     --w-hits WH            Weight for knn_hits in score (default: 0.0)
     --w-dist WD            Weight for min_dist in score; larger penalizes distance (default: 1.0)
     --w-conf WC            Weight for |pred - y| from Di (smaller is better) (default: 1.0)
+    --auto-wdist           Auto-scale distance weight by 1/(N + 2*C) using Ai/Ci common columns
 
     --topn N               Number of Ai rows to mark as 1 (default: 1)
     -o PATH, --out PATH    Output CSV path (1 column, no header; default: Fij.csv)
@@ -157,6 +158,7 @@ Notes:
     - Within Pred/Conf selection, priority is topk > pos_ratio > threshold.
     - If Di selection yields 0 candidates, all rows are ranked by Ci distance with a warning.
     - Score definition: score = (w_hits * knn_hits) - (w_dist * min_dist) - (w_conf * |pred - y|).
+    - Auto distance scaling (--auto-wdist): N is count of numeric-like common columns; C is count of categorical columns. Effective distance weight becomes w_dist/(N+2*C). This aligns distance scale (~[0, N+2C]) with |pred - y| (~[0,1]).
 """
 
 ### new_attackDi_Ci_greedy: score Di-selected candidates by greedy Ci distances
@@ -166,12 +168,12 @@ Notes:
 new_attackDi_Ci_greedy.py – Rank Di-selected candidates by greedy Ci distance and select top-N
 
 Quick examples:
-    # Union of Pred and Conf, both top-10,000; greedy Ci matching; emit top 10,000
+    # Union of Pred and Conf with thresholds; greedy Ci matching; emit top 10,000
     python attack\new_attackDi_Ci_greedy.py out\PWSCUP2025_Pre_Data_for_Attack\A22.csv \
         out\PWSCUP2025_Pre_Data_for_Attack\C22_fix.csv \
         out\PWSCUP2025_Pre_Data_for_Attack\D22.json \
-        --pred-topk 10000 --conf-topk 10000 --mode union --w-conf 1.0 --topn 10000 \
-        -o out\Fij_new_greedy_22.csv --out-rank out\Fij_new_greedy_22_rank.csv
+        --pred-threshold 0.5 --conf-threshold 0.3 --mode union --w-conf 1.0 --auto-wdist --topn 10000 \
+        -o out\Fij_new_greedy_22.csv --out-rank out\Fij_new_greedy_22_rank.csv --out-map out\C22_matchmap_greedy.csv
 
 CLI:
     python attack\new_attackDi_Ci_greedy.py Ai_csv Ci_csv Di_json [options]
@@ -194,15 +196,18 @@ Options:
     --w-hits WH            Weight for greedy_match (0/1) in score (default: 0.0)
     --w-dist WD            Weight for greedy_dist in score; larger penalizes distance (default: 1.0)
     --w-conf WC            Weight for |pred - y| from Di (smaller is better) (default: 1.0)
+    --auto-wdist           Auto-scale distance weight by 1/(N + 2*C) using Ai/Ci common columns
 
     --topn N               Number of Ai rows to mark as 1 (default: 1)
     -o PATH, --out PATH    Output CSV path (1 column, no header; default: Fij.csv)
     --out-rank PATH        Optional CSV for ranked candidates with scores
+    --out-map PATH         Optional CSV for full greedy match table [ci_idx, ai_idx, distance, rank]
 
 Notes:
     - Greedy Ci matching expands rank automatically (ignores k); attempts to match all Ci rows one-to-one to Ai rows.
     - Each matched Ai gets its matched distance; unmatched Ai are assigned a large default (1000.0).
     - Score definition: score = (w_hits * greedy_match) - (w_dist * greedy_dist) - (w_conf * |pred - y|).
+    - Auto distance scaling (--auto-wdist): defines effective distance weight as w_dist/(N+2*C) based on common numeric/categorical counts.
 """
 
 ## attack_development(Ci_attack)

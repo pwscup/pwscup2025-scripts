@@ -6,6 +6,7 @@ import numpy as np
 
 # Use greedy Ci matcher (k ignored; expands automatically)
 from attack_Ci_ex_greedy import AttackCiGreedyMatchAll as AttackCiGreedy
+from mia import infer_numeric_mask
 
 
 class NewAttackDiCiGreedy(ABC):
@@ -19,7 +20,7 @@ class NewAttackDiCiGreedy(ABC):
       Each matched Ai has an associated distance; unmatched Ai get 1000.0.
       Rank candidates primarily by smaller matched distance (optionally add |pred - y| penalty).
     """
-    def __init__(self, ci_csv, di_json, mode="union", w_hits=0.0, w_dist=1.0, w_conf=1.0, topn=1):
+    def __init__(self, ci_csv, di_json, mode="union", w_hits=0.0, w_dist=1.0, w_conf=1.0, topn=1, auto_wdist=False):
         self.ci_csv = ci_csv
         self.di_json = di_json
         self.mode = mode
@@ -27,6 +28,7 @@ class NewAttackDiCiGreedy(ABC):
         self.w_dist = float(w_dist)
         self.w_conf = float(w_conf)
         self.topn = int(topn)
+        self.auto_wdist = bool(auto_wdist)
 
         self.inferred = None
         self.rank_table_ = None
@@ -80,8 +82,25 @@ class NewAttackDiCiGreedy(ABC):
                     dist = float(row["distance"]) if "distance" in row else float(row[2])
                     if 0 <= ai_idx < m:
                         md[ai_idx] = dist
+        # Optional auto scaling for distance weight by (N + 2*C)
+        w_dist_eff = self.w_dist
+        if self.auto_wdist:
+            try:
+                Ai_df = pd.read_csv(ai_csv, dtype=str, keep_default_na=False)
+                Ci_df = pd.read_csv(self.ci_csv, dtype=str, keep_default_na=False)
+                common = [c for c in Ai_df.columns if c in Ci_df.columns]
+                if common:
+                    num_mask = infer_numeric_mask(Ai_df, common)
+                    n_num = int(num_mask.sum())
+                    n_cat = int((~num_mask).sum())
+                    denom = n_num + 2 * n_cat
+                    if denom > 0:
+                        w_dist_eff = self.w_dist / float(denom)
+                        print(f"[auto-wdist] N={n_num}, C={n_cat}, denom={denom}, w_dist_eff={w_dist_eff:.6g}")
+            except Exception as e:
+                print(f"[auto-wdist warn] failed to compute feature-based scaling: {e}")
         # Convert to score where larger is better
-        score = self.w_hits * hits - self.w_dist * md
+        score = self.w_hits * hits - w_dist_eff * md
         if conf_score is not None:
             score = score - self.w_conf * conf_score
         return score, hits, md
@@ -165,11 +184,13 @@ if __name__ == "__main__":
     ap.add_argument("--w-hits", type=float, default=0.0, help="weight for greedy_match (0/1) in score")
     ap.add_argument("--w-dist", type=float, default=1.0, help="weight for greedy_dist in score (larger penalizes distance)")
     ap.add_argument("--w-conf", type=float, default=1.0, help="weight for |pred - y| from Di (smaller is better)")
+    ap.add_argument("--auto-wdist", action="store_true", help="auto-scale distance weight by 1/(N + 2*C) using Ai/Ci common columns")
 
     # Output control
     ap.add_argument("--topn", type=int, default=1, help="number of Ai rows to mark as 1 (default: 1)")
     ap.add_argument("-o", "--out", default="Fij.csv", help="output CSV path (1 column, no header)")
     ap.add_argument("--out-rank", default=None, help="optional CSV to save ranked candidates with scores")
+    ap.add_argument("--out-map", default=None, help="optional CSV to save full greedy match table [ci_idx, ai_idx, distance, rank]")
 
     args = ap.parse_args()
 
@@ -181,6 +202,7 @@ if __name__ == "__main__":
         w_dist=args.w_dist,
         w_conf=args.w_conf,
         topn=args.topn,
+        auto_wdist=args.auto_wdist,
     )
 
     attacker.infer(
@@ -196,4 +218,30 @@ if __name__ == "__main__":
     if args.out_rank and attacker.rank_table_ is not None:
         attacker.rank_table_.to_csv(args.out_rank, index=False)
         print(f"rank table was successfully saved as {args.out_rank}")
+    # Save greedy match table if requested
+    if args.out_map:
+        try:
+            # Re-run lightweight greedy to access its internal table
+            # Note: AttackCiGreedyMatchAll was already used inside; but to keep coupling low, run again.
+            from attack_Ci_ex_greedy import AttackCiGreedyMatchAll as _Greedy
+            g = _Greedy(args.Ci_csv, k=1)
+            _ = g.infer(args.Ai_csv)
+            if getattr(g, "match_table_", None) is not None:
+                g.match_table_.to_csv(args.out_map, index=False)
+                print(f"match table was successfully saved as {args.out_map}")
+        except Exception as e:
+            print(f"[warn] failed to save match table: {e}")
 
+    # Print helpful stats about greedy coverage
+    try:
+        n_total = len(pd.read_csv(args.Ai_csv, nrows=0))  # placeholder to avoid reading full; not used
+    except Exception:
+        n_total = None
+    try:
+        # Recover candidate mask size via rank_table_ (may be less than full Ai)
+        if attacker.rank_table_ is not None:
+            in_cand_greedy = int((attacker.rank_table_.get("greedy_match", pd.Series([], dtype=int)) > 0).sum())
+            cand_size = int(attacker.rank_table_.shape[0])
+            print(f"[stats greedy] matched within candidates = {in_cand_greedy}/{cand_size} shown in rank table")
+    except Exception as e:
+        print(f"[warn] failed to print greedy in-candidate stats: {e}")

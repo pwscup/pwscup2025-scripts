@@ -133,6 +133,11 @@ PWSCUP 2025 Scripts — 実践ガイド（日本語）
 - Greedy 版スコアリング: `python attack\new_attackDi_Ci_greedy.py Ai_csv Ci_csv Di_json [options]`
   - 例: `python attack\new_attackDi_Ci_greedy.py out\PWSCUP2025_Pre_Data_for_Attack\A22.csv out\PWSCUP2025_Pre_Data_for_Attack\C22_fix.csv out\PWSCUP2025_Pre_Data_for_Attack\D22.json --pred-topk 10000 --conf-topk 10000 --mode union --topn 10000 -o out\Fij_new_greedy_22.csv --out-rank out\Fij_new_greedy_22_rank.csv`
 - Greedy モードの k について: `attack_Ci_ex_greedy.py` の greedy は k を固定せず、必要に応じてランク（近傍順位）を自動的に拡張して全ての Ci 行に対応する Ai 行を見つけにいきます（Ai を使い切った場合は残ることがあります）。
+
+【追記】距離の自動スケーリング（--auto-wdist）
+- `new_attackDi_Ci.py` / `new_attackDi_Ci_greedy.py` に `--auto-wdist` を追加。
+- Ai/Ci の共通列のうち「数値列 N」「カテゴリ列 C」を推定し、距離の重みを 1/(N+2C) に自動調整して |pred − y|（0..1） とスケールを揃えます。
+- 既定値の `--w-dist 1.0` を基準に、実効的には `w_dist/(N+2C)` が用いられます。
 **匿名性評価の例**
 - 答え生成と採点
   - `python evaluation\gen_ans.py out\PWSCUP2025_Pre_Data_for_Attack\A22.csv in\B22_3.csv -o out\Z22.csv`

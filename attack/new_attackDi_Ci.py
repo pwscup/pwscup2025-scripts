@@ -6,6 +6,7 @@ import numpy as np
 
 # Use extended Di attacks (support topk/ratio) and k-NN Ci stats
 from attack_Ci_ex import AttackCiNN as AttackCiKNN
+from mia import infer_numeric_mask
 
 
 class NewAttackDiCi(ABC):
@@ -17,7 +18,7 @@ class NewAttackDiCi(ABC):
     - Ci step: compute k-NN stats (hits, min_dist) for Ai vs Ci; rank
       candidates primarily by smaller min_dist (optionally include hits).
     """
-    def __init__(self, ci_csv, di_json, k=5, mode="union", w_hits=0.0, w_dist=1.0, w_conf=1.0, topn=1):
+    def __init__(self, ci_csv, di_json, k=5, mode="union", w_hits=0.0, w_dist=1.0, w_conf=1.0, topn=1, auto_wdist=False):
         self.ci_csv = ci_csv
         self.di_json = di_json
         self.k = int(k)
@@ -27,6 +28,7 @@ class NewAttackDiCi(ABC):
         # Smaller |pred - y| is better; weight defaults to 1.0
         self.w_conf = float(w_conf)
         self.topn = int(topn)
+        self.auto_wdist = bool(auto_wdist)
 
         self.inferred = None
         self.rank_table_ = None
@@ -68,8 +70,25 @@ class NewAttackDiCi(ABC):
         # hits: larger is better; min_dist: smaller is better
         hits = df.iloc[:, 0].to_numpy()
         md = df.iloc[:, 1].to_numpy()
+        # Optional auto scaling for distance weight by (N + 2*C)
+        w_dist_eff = self.w_dist
+        if self.auto_wdist:
+            try:
+                Ai_df = pd.read_csv(ai_csv, dtype=str, keep_default_na=False)
+                Ci_df = pd.read_csv(self.ci_csv, dtype=str, keep_default_na=False)
+                common = [c for c in Ai_df.columns if c in Ci_df.columns]
+                if common:
+                    num_mask = infer_numeric_mask(Ai_df, common)
+                    n_num = int(num_mask.sum())
+                    n_cat = int((~num_mask).sum())
+                    denom = n_num + 2 * n_cat
+                    if denom > 0:
+                        w_dist_eff = self.w_dist / float(denom)
+                        print(f"[auto-wdist] N={n_num}, C={n_cat}, denom={denom}, w_dist_eff={w_dist_eff:.6g}")
+            except Exception as e:
+                print(f"[auto-wdist warn] failed to compute feature-based scaling: {e}")
         # Convert to score where larger is better
-        score = self.w_hits * hits - self.w_dist * md
+        score = self.w_hits * hits - w_dist_eff * md
         if conf_score is not None:
             # Smaller |pred - y| is better → subtract with weight
             score = score - self.w_conf * conf_score
@@ -155,6 +174,7 @@ if __name__ == "__main__":
     ap.add_argument("--w-hits", type=float, default=0.0, help="weight for knn_hits in score")
     ap.add_argument("--w-dist", type=float, default=1.0, help="weight for min_dist in score (larger penalizes distance)")
     ap.add_argument("--w-conf", type=float, default=1.0, help="weight for |pred - y| from Di (smaller is better)")
+    ap.add_argument("--auto-wdist", action="store_true", help="auto-scale distance weight by 1/(N + 2*C) using Ai/Ci common columns")
 
     # Output control
     ap.add_argument("--topn", type=int, default=1, help="number of Ai rows to mark as 1 (default: 1)")
@@ -172,6 +192,7 @@ if __name__ == "__main__":
         w_dist=args.w_dist,
         w_conf=args.w_conf,
         topn=args.topn,
+        auto_wdist=args.auto_wdist,
     )
 
     attacker.infer(

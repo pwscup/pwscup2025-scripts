@@ -88,6 +88,7 @@ Prepare data for attacks
     - Combine Pred/Conf: `--mode {union,intersection}` (default: union)
     - Ci/Di scoring: `-k` neighbors (default: 5). Score = `w_hits * knn_hits - w_dist * min_dist - w_conf * |pred - y|`.
       - Weights: `--w-hits` (default 0.0), `--w-dist` (default 1.0), `--w-conf` (default 1.0)
+      - Auto distance scaling: `--auto-wdist` scales distance by 1/(N + 2*C) where N and C are counts of numeric-like and categorical common columns, aligning distance scale with |pred - y|.
     - Output control: `--topn` positives (default: 1), `-o/--out` output CSV, `--out-rank` to export ranking table
     - Fallback: if Di yields 0 candidates, ranks all rows by Ci distance (warns in stdout)
 

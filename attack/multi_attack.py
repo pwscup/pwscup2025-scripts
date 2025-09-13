@@ -179,3 +179,21 @@ New_DiCi_scoring = [
 ]
 loop_for_all_teams(New_DiCi_scoring)
 print(f"new Di->Ci scoring attack completed")
+
+# %%
+# New Di->Ci scoring attack (greedy Ci matching; k ignored, ranks expand automatically)
+New_DiCi_scoring_greedy = [
+    "python", "attack/new_attackDi_Ci_greedy.py",
+    "out/PWSCUP2025_Pre_Data_for_Attack/A{id:02d}.csv",
+    "out/PWSCUP2025_Pre_Data_for_Attack/C{id:02d}_fix.csv",
+    "out/PWSCUP2025_Pre_Data_for_Attack/D{id:02d}.json",
+    "--pred-topk", "10000",
+    "--conf-topk", "10000",
+    "--mode", "union",
+    "--w-conf", "1.0",
+    "--topn", "10000",
+    "-o", "out/Fij_new_greedy_{id:02d}.csv",
+    "--out-rank", "out/Fij_new_greedy_{id:02d}_rank.csv",
+]
+loop_for_all_teams(New_DiCi_scoring_greedy)
+print(f"new Di->Ci scoring (greedy) completed")

@@ -1,0 +1,200 @@
+# %%
+from abc import ABC, abstractmethod
+import argparse
+
+import pandas as pd
+import numpy as np
+from sklearn.neighbors import NearestNeighbors
+
+from mia import build_feature_matrices
+
+# %%
+class AttackCiBase(ABC):
+    def __init__(self, path_to_Ci_csv, k):
+        self.Ci_df = pd.read_csv(path_to_Ci_csv, dtype=str, 
+                            keep_default_na=False)
+        self.inferred = None
+        self.k = int(k)
+
+    @abstractmethod
+    def infer(self, path_to_Ai_csv):
+        pass
+
+    def save_inferred(self, path_to_output):
+        # 1蛻励・繝倥ャ繝繝ｼ辟｡縺励〒菫晏ｭ假ｼ郁｡梧焚 = input1 縺ｮ陦梧焚・・
+        if self.inferred is None:
+            print("inferred is None. No file was saved.")
+        else:
+            self.inferred.to_csv(path_to_output, index=False, header=False)
+            print("inferred was successfully saved.")
+
+# %%
+# class AttackCiNN(AttackCiBase):
+#     """
+#     mia.py縺ｨ譛ｬ雉ｪ逧・↓蜷後§
+#     """
+#     def infer(self, path_to_Ai_csv, k):
+#         Ai_df = pd.read_csv(path_to_Ai_csv, dtype=str, 
+#                             keep_default_na=False)
+#         # 迚ｹ蠕ｴ陦悟・菴懈・
+#         X1, X2 = build_feature_matrices(Ai_df, self.Ci_df)
+
+#         # 豈碑ｼ・ｬ｡蜈・′ 0・亥・騾壼・縺ｪ縺・or 縺吶∋縺ｦ髯､螟厄ｼ峨・蝣ｴ蜷医・蜈ｨ縺ｦ 0 繧貞・蜉・
+#         m = len(Ai_df)
+#         if X1.shape[1] == 0 or X2.shape[1] == 0 or m == 0:
+#             self.inferred = pd.Series(np.zeros(m, dtype=int))
+#             return
+
+#         # 譛霑大ｍ讀懃ｴ｢・医・繝ｳ繝上ャ繧ｿ繝ｳ霍晞屬・壽焚蛟､[0,1] + one-hot 繧堤ｵｱ荳逧・↓謇ｱ縺医ｋ・・
+#         nn = NearestNeighbors(n_neighbors=1, metric="manhattan")
+#         nn.fit(X1)
+#         idx = nn.kneighbors(X2, n_neighbors=1, return_distance=False).ravel()  # 0-based indices into df1
+
+#         # 驥崎､・ｒ縺ｾ縺ｨ繧√※ 1
+#         marks = np.zeros(m, dtype=int)
+#         if idx.size > 0:
+#             marks[np.unique(idx)] = 1
+
+        
+#         self.inferred = pd.DataFrame(marks, dtype=int)
+
+#         return self.inferred
+
+# %%
+class AttackCiNN(AttackCiBase):
+    """
+    AttackCiNN 縺ｮ k-NN 諡｡蠑ｵ
+    霑斐ｊ蛟､(2蛻・:
+      col0: Ai 蜷・｡後′・・i蜈ｨ陦古楊蛟九・・芽ｿ大ｍ髮・粋縺ｮ荳ｭ縺ｧ驕ｸ縺ｰ繧後◆蝗樊焚・磯ｻ蠎ｦ・・
+      col1: 縺昴・ Ai 陦後↓蟇ｾ縺励※隕ｳ貂ｬ縺輔ｌ縺滓怙蟆剰ｷ晞屬・・loat・・
+    """
+    def infer(self, path_to_Ai_csv):
+        Ai_df = pd.read_csv(path_to_Ai_csv, dtype=str, 
+                            keep_default_na=False)
+        # 迚ｹ蠕ｴ陦悟・菴懈・
+        X1, X2 = build_feature_matrices(Ai_df, self.Ci_df)
+
+        # 豈碑ｼ・ｬ｡蜈・′ 0・亥・騾壼・縺ｪ縺・or 縺吶∋縺ｦ髯､螟厄ｼ峨・蝣ｴ蜷医・蜈ｨ縺ｦ 0 繧貞・蜉・
+        m = len(Ai_df)
+        if X1.shape[1] == 0 or X2.shape[1] == 0 or m == 0:
+            out = pd.DataFrame({
+                "knn_hits": np.zeros(m, dtype=int),
+                "min_dist": np.full(m, np.nan, dtype=float)
+            })
+            self.inferred = out
+            return self.inferred
+
+        # 譛霑大ｍ讀懃ｴ｢・医・繝ｳ繝上ャ繧ｿ繝ｳ霍晞屬・壽焚蛟､[0,1] + one-hot 繧堤ｵｱ荳逧・↓謇ｱ縺医ｋ・・
+        nn = NearestNeighbors(n_neighbors=self.k, metric="manhattan")
+        nn.fit(X1) # fit on Ci
+        dists, inds = nn.kneighbors(X2, n_neighbors=self.k, return_distance=True)
+        print(f"dists: {dists}")
+        print(f"inds: {inds}")
+        print(f"dists.shape: {dists.shape}, inds.shape: {inds.shape}")
+        print(dists[0][0], inds[0][0])  # Ai縺ｮ1陦檎岼縺ｫ蟇ｾ縺吶ｋ譛霑大ｍ1蛟狗岼縺ｮ霍晞屬縺ｨ繧､繝ｳ繝・ャ繧ｯ繧ｹ
+        
+        # 蟷ｳ蝮ｦ蛹厄ｼ・i蜈ｨ陦古楊蛟具ｼ・
+        distances = dists.ravel()  # flatten distances
+        idx = inds.ravel() # 0-based indices into df1
+        # idx縺ｫ縺ｯCi縺ｫ蟇ｾ蠢懊☆繧・0000莉ｶ縺ｮ譛霑大ｍ繧､繝ｳ繝・ャ繧ｯ繧ｹ蜈･縺｣縺ｦ縺・ｋ
+        # distances縺ｫ縺ｯ縺昴・霍晞屬縺悟・縺｣縺ｦ縺・ｋ
+        print(f"idx: {idx}")
+        print(f"distances: {distances}")
+        print(f"idx.shape: {idx.shape}, distances.shape: {distances.shape}")
+
+        # 1) 蜃ｺ迴ｾ蝗樊焚・磯ｻ蠎ｦ・峨ｒ謨ｰ縺医ｋ
+        hits = np.bincount(idx, minlength=m).astype(int)
+
+        # 2) 繧､繝ｳ繝・ャ繧ｯ繧ｹ縺斐→縺ｮ譛蟆剰ｷ晞屬繧貞叙繧・
+        min_dist = np.full(m, np.inf, dtype=float)
+        # min_dist[idx] = np.minimum(min_dist[idx], distances) 縺ｯ菴ｿ縺医↑縺・・縺ｧ:
+        np.minimum.at(min_dist, idx, distances)
+        # 霑大ｍ縺ｫ荳蠎ｦ繧る∈縺ｰ繧後※縺・↑縺・｡後・ inf 竊・1000 縺ｫ
+        min_dist[~np.isfinite(min_dist)] = 1000.0
+
+        # 2蛻励・ DataFrame 縺ｫ
+        self.inferred = pd.DataFrame({
+            "knn_hits": hits,
+            "min_dist": min_dist
+        })
+
+        return self.inferred
+
+# %%
+class AttackCiGreedyMatch(AttackCiBase):
+    """
+    Greedy 1-to-1 matching:
+      - Use kNN ranks: r=0 (1st NN), then r=1 (2nd NN), ...
+      - Within each rank, assign pairs by ascending distance, skipping already-used Ai and already-assigned Ci.
+      - Stops when all Ci are matched (ideally |Ci| == 10000).
+    Outputs:
+      - self.inferred: 1-column (0/1) length |Ai| -> assigned Ai rows marked 1
+      - self.match_table_: DataFrame(ci_idx, ai_idx, distance, rank) with |Ci| rows
+    """
+    def infer(self, path_to_Ai_csv):
+        Ai_df = pd.read_csv(path_to_Ai_csv, dtype=str, keep_default_na=False)
+
+        # 迚ｹ蠕ｴ陦悟・・・1: Ai, X2: Ci・・
+        X1, X2 = build_feature_matrices(Ai_df, self.Ci_df)
+
+        m = len(Ai_df)
+        n = len(self.Ci_df)
+
+        # 豈碑ｼ・ｬ｡蜈・′0縺ｪ繧牙・0縺ｨ遨ｺ縺ｮ蟇ｾ蠢懆｡ｨ
+        if X1.shape[1] == 0 or X2.shape[1] == 0 or m == 0 or n == 0:
+            self.inferred = pd.DataFrame(np.zeros(m, dtype=int))
+            self.match_table_ = pd.DataFrame(columns=["ci_idx", "ai_idx", "distance", "rank"])
+            return self.inferred
+
+        # kNN・医・繝ｳ繝上ャ繧ｿ繝ｳ霍晞屬・・
+        nn = NearestNeighbors(n_neighbors=self.k, metric="manhattan")
+        nn.fit(X1)  # fit on Ai
+        dists, inds = nn.kneighbors(X2, n_neighbors=self.k, return_distance=True)
+        # dists, inds: shape = (n_Ci, k)
+
+        assigned_ci = np.full(n, -1, dtype=int)     # 蜷Гi縺ｫ蜑ｲ蠖薙※縺・Ai index・域悴蜑ｲ蠖薙・ -1・・
+        used_ai = np.zeros(m, dtype=bool)           # 譌｢縺ｫ蜑ｲ蠖薙※縺ｫ菴ｿ縺｣縺・Ai 繧偵ヶ繝ｼ繝ｫ縺ｧ邂｡逅・
+        pairs = []                                  # 遒ｺ螳壹＠縺・(ci, ai, dist, rank) 繧定ｲｯ繧√ｋ
+
+        # 繝ｩ繝ｳ繧ｯ r=0..k-1 縺ｮ鬆・〒蜃ｦ逅・
+        for r in range(self.k):
+            # 譛ｪ蜑ｲ蠖薙・Ci縺ｫ縺､縺・※縲・distance, ci_idx, ai_idx) 繧剃ｽ懊ｋ
+            ci_unassigned = np.flatnonzero(assigned_ci == -1)
+            if ci_unassigned.size == 0:
+                break
+
+            # 霍晞屬繝ｻ蛟呵｣懊ｒ蜿悶ｊ蜃ｺ縺・
+            cand_d = dists[ci_unassigned, r]
+            cand_ai = inds[ci_unassigned, r]
+
+            # 霍晞屬譏・・↓荳ｦ縺ｹ縺ｦ雋ｪ谺ｲ縺ｫ遒ｺ螳・
+            order = np.argsort(cand_d)
+            for t in order:
+                ci = ci_unassigned[t]
+                ai = cand_ai[t]
+                dist = cand_d[t]
+                if assigned_ci[ci] == -1 and not used_ai[ai]:
+                    assigned_ci[ci] = ai
+                    used_ai[ai] = True
+                    pairs.append((ci, ai, float(dist), r))
+
+            # 縺薙％縺ｧ谺｡縺ｮ rank 縺ｸ・域ｮ九▲縺滓悴蜑ｲ蠖鼎i繧堤ｶ壹″縺ｧ蝓九ａ縺ｦ縺・￥・・
+
+        # 蠢ｵ縺ｮ縺溘ａ縲∵悴蜑ｲ蠖薙′谿九▲縺ｦ縺・◆繧峨お繝ｩ繝ｼ繝｡繝・そ繝ｼ繧ｸ
+        remaining = int((assigned_ci == -1).sum())
+        if remaining > 0:
+            print(f"[Warn] {remaining} Ci rows are still unmatched after r=0..{self.k-1}. "
+                  f"Consider increasing k.")
+
+        # 蜃ｺ蜉・: Ai 蛛ｴ縺ｮ0/1繝吶け繝医Ν
+        marks = np.zeros(m, dtype=int)
+        for ai in assigned_ci:
+            if ai >= 0:
+                marks[ai] = 1
+        self.inferred = pd.DataFrame(marks.astype(int))
+
+        # 蜃ｺ蜉・: 蟇ｾ蠢懆｡ｨ
+        self.match_table_ = pd.DataFrame(pairs, columns=["ci_idx", "ai_idx", "distance", "rank"])
+
+        return self.inferred
+

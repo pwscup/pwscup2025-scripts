@@ -64,6 +64,7 @@ Prepare data for attacks
   - `python attack\attack_Ci_ex.py out\PWSCUP2025_Pre_Data_for_Attack\A22.csv out\PWSCUP2025_Pre_Data_for_Attack\C22_fix.csv -o out\C22_inferred_ex.csv -k 1`
   - `python attack\attack_Ci_ex_greedy.py out\PWSCUP2025_Pre_Data_for_Attack\C22_fix.csv out\PWSCUP2025_Pre_Data_for_Attack\A22.csv -m nn -k 5 -o out\C22_inferred_ex_greedy_k5_nn.csv`
   - `python attack\attack_Ci_ex_greedy.py out\PWSCUP2025_Pre_Data_for_Attack\C22_fix.csv out\PWSCUP2025_Pre_Data_for_Attack\A22.csv -m greedy -k 20 -o out\C22_inferred_ex_greedy_k20_greedy.csv --out-map out\C22_matchmap_k20.csv`
+    - Note: in greedy mode, k is treated as an initial hint; the algorithm expands automatically until all Ci are matched or Ai is exhausted.
 
 - Di attack (original/extended):
   - `python attack\attack_Di.py out\PWSCUP2025_Pre_Data_for_Attack\D22.json out\PWSCUP2025_Pre_Data_for_Attack\A22.csv`
@@ -80,6 +81,7 @@ Prepare data for attacks
 - New Di->Ci scoring attack:
   - Purpose: select candidates with Di (Pred/Conf), then rank by Ci k-NN distance and Di confidence error |pred - y|; pick top-N.
   - Example: `python attack\new_attackDi_Ci.py out\PWSCUP2025_Pre_Data_for_Attack\A22.csv out\PWSCUP2025_Pre_Data_for_Attack\C22_fix.csv out\PWSCUP2025_Pre_Data_for_Attack\D22.json --pred-topk 10000 --conf-topk 10000 --mode union -k 5 --w-conf 1.0 --topn 10000 -o out\Fij_new_22.csv --out-rank out\Fij_new_22_rank.csv`
+  - Greedy variant: uses greedy Ci matching (k ignored; ranks expand automatically). Example: `python attack\new_attackDi_Ci_greedy.py out\PWSCUP2025_Pre_Data_for_Attack\A22.csv out\PWSCUP2025_Pre_Data_for_Attack\C22_fix.csv out\PWSCUP2025_Pre_Data_for_Attack\D22.json --pred-topk 10000 --conf-topk 10000 --mode union --w-conf 1.0 --topn 10000 -o out\Fij_new_greedy_22.csv --out-rank out\Fij_new_greedy_22_rank.csv`
   - Key options:
     - Pred: `--pred-threshold`, `--pred-topk`, `--pred-pos-ratio` (priority: topk > ratio > threshold)
     - Conf: `--conf-threshold`, `--conf-topk`, `--conf-pos-ratio` (priority: topk > ratio > threshold)

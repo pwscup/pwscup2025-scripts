@@ -169,7 +169,7 @@ New_DiCi_scoring = [
     "out/PWSCUP2025_Pre_Data_for_Attack/C{id:02d}_fix.csv",
     "out/PWSCUP2025_Pre_Data_for_Attack/D{id:02d}.json",
     "--pred-threshold", "0.5",
-    "--conf-threshold", "0.3",
+    "--conf-threshold", "0.5",
     "--mode", "union",
     "-k", "5",
     "--w-conf", "1.0",
@@ -189,7 +189,7 @@ New_DiCi_scoring_greedy = [
     "out/PWSCUP2025_Pre_Data_for_Attack/C{id:02d}_fix.csv",
     "out/PWSCUP2025_Pre_Data_for_Attack/D{id:02d}.json",
     "--pred-threshold", "0.5",
-    "--conf-threshold", "0.3",
+    "--conf-threshold", "0.5",
     "--mode", "union",
     "--w-conf", "1.0",
     "--auto-wdist",
@@ -200,3 +200,22 @@ New_DiCi_scoring_greedy = [
 ]
 loop_for_all_teams(New_DiCi_scoring_greedy)
 print(f"new Di->Ci scoring (greedy) completed")
+
+# %%
+# Independent Ci(Distance, greedy) + Di(|pred - y|) scoring attack
+# Greedy explores to match |Ci| items; rank independently with weights; select top 10,000
+Ci_Di_independent = [
+    "python", "attack/attack_Ci_Di_independent.py",
+    "out/PWSCUP2025_Pre_Data_for_Attack/A{id:02d}.csv",
+    "out/PWSCUP2025_Pre_Data_for_Attack/C{id:02d}_fix.csv",
+    "out/PWSCUP2025_Pre_Data_for_Attack/D{id:02d}.json",
+    "--w-conf", "1.0",
+    "--auto-wdist",
+    "--k-hint", "300",
+    "--topn", "10000",
+    "-o", "out/Fij_independent_{id:02d}.csv",
+    "--out-rank", "out/Fij_independent_{id:02d}_rank.csv",
+    "--out-map", "out/C{id:02d}_matchmap_independent.csv",
+]
+loop_for_all_teams(Ci_Di_independent)
+print(f"independent Ci+Di (greedy) scoring completed")

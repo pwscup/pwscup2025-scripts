@@ -1,6 +1,6 @@
-PWSCUP 2025 Scripts — Practical Guide
+﻿PWSCUP 2025 Scripts 窶・Practical Guide
 
-This readme is distilled from usage.txt to provide a clear, step-by-step guide to the repository’s workflows: anonymization, evaluation, and attack pipelines. All commands assume you are in the repository root.
+This readme is distilled from usage.txt to provide a clear, step-by-step guide to the repository窶冱 workflows: anonymization, evaluation, and attack pipelines. All commands assume you are in the repository root.
 
 Important: Input files go in `in/`. Outputs are written to `out/`.
 
@@ -51,7 +51,7 @@ Important: Input files go in `in/`. Outputs are written to `out/`.
 - Di attack: Combination of Prediction attack and Confidence attack.
 - Example combined attack (distance + prediction + confidence; membership if score > threshold):
   - `python attack/attack_example.py -o out/Fij_01.csv out\PWSCUP2025_Pre_Data_for_Attack_01-05\A01.csv out\PWSCUP2025_Pre_Data_for_Attack_01-05\C01.csv out\PWSCUP2025_Pre_Data_for_Attack_01-05\D01.json`
-- Note: `Fij_01.csv` has 100,000 records; naive settings may exceed the limit of 10,000 positives (“1”s). Expect many Type II errors if not limited.
+- Note: `Fij_01.csv` has 100,000 records; naive settings may exceed the limit of 10,000 positives (窶・窶捏). Expect many Type II errors if not limited.
 
 Prepare data for attacks
 - Create and populate: `out/PWSCUP2025_Pre_Data_for_Attack/`
@@ -92,6 +92,23 @@ Prepare data for attacks
     - Output control: `--topn` positives (default: 1), `-o/--out` output CSV, `--out-rank` to export ranking table
     - Fallback: if Di yields 0 candidates, ranks all rows by Ci distance (warns in stdout)
 
+- Independent Ci+Di (greedy) scoring attack:
+  - Purpose: greedy Ci matching assigns distances to Ai independently of Di; Di contributes |pred - y| as a penalty. Rank all Ai and pick top 10,000.
+  - Example: `python attack\attack_Ci_Di_independent.py out\PWSCUP2025_Pre_Data_for_Attack\A22.csv out\PWSCUP2025_Pre_Data_for_Attack\C22_fix.csv out\PWSCUP2025_Pre_Data_for_Attack\D22.json --w-conf 1.0 --auto-wdist --k-hint 300 --topn 10000 -o out\Fij_independent_22.csv --out-rank out\Fij_independent_22_rank.csv`
+  - Score: `w_hits * greedy_match - w_dist_eff * greedy_dist - w_conf * |pred - y|` (same weighting style as new_attackDi_Ci)
+
+  Details:
+  - Inputs: `Ai_csv`, `Ci_csv`, `Di_json` (XGBoost Booster JSON).
+  - Outputs:
+    - `--out` 1-column CSV (0/1, no header) with top-N membership marks.
+    - Optional: `--out-rank` detailed ranking table; `--out-map` greedy match map [ci_idx, ai_idx, distance, rank].
+  - Options:
+    - `--w-hits`, `--w-dist`, `--w-conf`: weights for match flag, distance penalty, and |pred - y| penalty.
+    - `--auto-wdist`: scales distance weight by 1/(N+2*C) using common numeric/categorical counts.
+    - `--k-hint`: initial neighbor window for greedy (ranks expand automatically).
+    - `--topn`: positives to output (default 10000).
+  - Behavior: greedy Ci竊但i one-to-one assignment yields per-Ai distances (unmatched -> 1000.0). Conf_Attack provides |pred - y| for all rows. All rows are ranked by the score and the top-N are selected.
+
 - Batch helpers:
   - Notebooks and script: `attack\multi_attack.ipynb`, `attack\multi_attack.py`
 
@@ -106,7 +123,7 @@ Prepare data for attacks
 - New variant (`new_attackDi_Ci`): score Di-selected candidates using Ci distance and |pred - y|; output the top-N (default 1).
 
 
-**Attack (Ci) — Dev Commands**
+**Attack (Ci) 窶・Dev Commands**
 - Build extended Ci inference with k neighbors:
   - `python attack\attack_Ci_ex.py out\PWSCUP2025_Pre_Data_for_Attack\A01.csv out\PWSCUP2025_Pre_Data_for_Attack\C01.csv -o out\C01_inferred_ex.csv -k 1`
   - Output columns: (1) times inferred by Ci (overlaps across k), (2) min distance to nearest neighbor
@@ -114,7 +131,7 @@ Prepare data for attacks
   - `python attack\ex_to_normal.py out\C01_inferred_ex.csv out\C01_inferred.csv`
 
 
-**Attack (Di) — Extended CLI Summary**
+**Attack (Di) 窶・Extended CLI Summary**
 - Basic forms:
   - Use thresholds: `--pred-threshold TP` (default 0.5), `--conf-threshold TC` (default 0.1, selects small |p - y|)
   - Force exact counts: `--pred-topk K`, `--conf-topk K`
@@ -135,28 +152,28 @@ Prepare data for attacks
 **Anonymity Evaluation Examples**
 - Generate expected answers and score:
   - `python evaluation\gen_ans.py out\PWSCUP2025_Pre_Data_for_Attack\A22.csv in\B22_3.csv -o out\Z22.csv`
-  - `python evaluation\check_ans.py out\Z22.csv out\C01_inferred_ex_greedy.csv`  → example: 1008pt (greedy attack)
+  - `python evaluation\check_ans.py out\Z22.csv out\C01_inferred_ex_greedy.csv`  竊・example: 1008pt (greedy attack)
 - Sample combined attack run:
   - `python attack/attack_example.py -o out/example_22.csv out\PWSCUP2025_Pre_Data_for_Attack\A22.csv out\PWSCUP2025_Pre_Data_for_Attack\C22_fix.csv out\PWSCUP2025_Pre_Data_for_Attack\D22.json`
-  - Warning: sample output may exceed the 10,000 “1”s limit for `Fij.csv`. Use the fixer below if needed.
+  - Warning: sample output may exceed the 10,000 窶・窶捏 limit for `Fij.csv`. Use the fixer below if needed.
   - Enforce limit randomly (simple fixer):
     - `python util\fix_Fijcsv_random.py out\example_22.csv out\example_22_fix.csv`
-    - Example: fixed score ≈ 1013pt
+    - Example: fixed score 竕・1013pt
 
 
 **Heuristics & Tips**
-- Limit positives (“1”s) in `Fij.csv` to 10,000 for fairness/comparability.
+- Limit positives (窶・窶捏) in `Fij.csv` to 10,000 for fairness/comparability.
 - For Ci greedy matching, you can take up to k nearest candidates and assign pairs greedily (k=5 example), ensuring each id is used at most once. This is for membership inference, not full identity mapping.
 - Keep an eye on `out/` artifacts like `fix_report.csv` for data hygiene.
 
 
 **Ideas/Proposals From Development History**
-- Proposal 0 (easy/efficient): Limit “1”s to 10,000 using the original combined score.
-- Proposal 1 (Ci moderate): Limit “1”s to 10,000 using Hungarian assignment in Ci.
+- Proposal 0 (easy/efficient): Limit 窶・窶捏 to 10,000 using the original combined score.
+- Proposal 1 (Ci moderate): Limit 窶・窶捏 to 10,000 using Hungarian assignment in Ci.
 - Proposal 2 (Di easy): Raise the confidence threshold in AttackDi.
 - Proposal 3 (Ci+Di moderate): Inject noise in Ci/Di 1/0 answers and weight by noise magnitude.
 - Proposal 4 (Di hard/scratch): Explore multiple ML models; align with the target model via internal training comparisons.
-- Proposal 5 (Ci moderate/efficient): Mutual nearest neighbors (both Ci→Ai and Ai→Ci constraints).
+- Proposal 5 (Ci moderate/efficient): Mutual nearest neighbors (both Ci竊但i and Ai竊辰i constraints).
 - Proposal 6 (Ci moderate/scratch/efficient): Generalize 1-NN to k-NN.
 
 

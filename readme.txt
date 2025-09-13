@@ -184,3 +184,14 @@ Prepare data for attacks
 
 **Notes**
 - This readme is a concise, cleaned summary of `usage.txt` to maximize readability while preserving the original intent and commands.
+
+
+AllCi + AllDi (Hungarian)
+- Description: Ranks all Ai rows by a weighted sum of Hungarian Ci→Ai matched distance and Di |pred - y| (smaller is better). Selects the top 10,000 globally without Di candidate filtering.
+- Command example:
+  - `python attack\\attack_allCi_allDi_hungarian.py \\
+     out\\PWSCUP2025_Pre_Data_for_Attack\\A22.csv \\
+     out\\PWSCUP2025_Pre_Data_for_Attack\\C22_fix.csv \\
+     out\\PWSCUP2025_Pre_Data_for_Attack\\D22.json \\
+     --hung-mode knn -k 300 --topn 10000 --w-dist 1.0 --w-conf 1.0 --auto-wdist -o out\\Fij_all_hungarian_22.csv \\
+     --out-rank out\\Fij_all_hungarian_22_rank.csv --out-map out\\C22_matchmap_all_hungarian.csv`

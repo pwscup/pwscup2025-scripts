@@ -182,3 +182,13 @@
 - 螳溯｡御ｾ・
   - `python attack\\attack_Ci_Di_independent.py out\\PWSCUP2025_Pre_Data_for_Attack\\A22.csv out\\PWSCUP2025_Pre_Data_for_Attack\\C22_fix.csv out\\PWSCUP2025_Pre_Data_for_Attack\\D22.json --w-conf 1.0 --auto-wdist --k-hint 300 --topn 10000 -o out\\Fij_independent_22.csv --out-rank out\\Fij_independent_22_rank.csv --out-map out\\C22_matchmap_independent.csv`
 - 繝舌ャ繝・ `attack/multi_attack.py` 縺ｫ譛ｬ謾ｻ謦・・荳諡ｬ螳溯｡後ｒ霑ｽ蜉貂医∩縲・- 豕ｨ諢・ greedy 縺ｯ繝ｩ繝ｳ繧ｯ繧貞ｿ・ｦ√↓蠢懊§縺ｦ閾ｪ蜍慕噪縺ｫ諡｡蠑ｵ縺励∪縺呻ｼ・i 縺悟ｰｽ縺阪ｋ縺ｨ譛ｪ蜑ｲ蠖薙・ Ci 縺梧ｮ九ｋ蝣ｴ蜷医′縺ゅｊ縺ｾ縺呻ｼ峨・
+
+【新規】AllCi + AllDi（ハンガリアン）
+- 概要: 全 Ai 行を対象に、Ci→Ai のハンガリアン法で得られる距離と、Di の |pred - y|（信頼度誤差）の重み付き合計（`w_dist*Ci + w_conf*|pred-y|`）を最小化する割当を行い、上位 10,000 件を 1 として選択します（Di による候補絞り込みは行いません）。
+- 実行例:
+  - `python attack\\attack_allCi_allDi_hungarian.py \\
+     out\\PWSCUP2025_Pre_Data_for_Attack\\A22.csv \\
+     out\\PWSCUP2025_Pre_Data_for_Attack\\C22_fix.csv \\
+     out\\PWSCUP2025_Pre_Data_for_Attack\\D22.json \\
+     --hung-mode knn -k 300 --topn 10000 --w-dist 1.0 --w-conf 1.0 --auto-wdist -o out\\Fij_all_hungarian_22.csv \\
+     --out-rank out\\Fij_all_hungarian_22_rank.csv --out-map out\\C22_matchmap_all_hungarian.csv`

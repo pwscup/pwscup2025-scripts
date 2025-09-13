@@ -91,6 +91,25 @@ python attack\new_attackDi_Ci.py \
 
 Heuristic for k-NN matching (Ci): take up to k nearest neighbors; match the closest pair first, then continue greedily among remaining unmatched items. Greedy tie-breaking by smaller ID is acceptable since we infer membership, not exact pairings.
 
+## attack_allCi_allDi_hungarian (sum of Ci Hungarian distance and Di |pred - y|)
+Ranks all Ai rows by: Hungarian matched distance (Ci→Ai) + |pred - y| from Di. Selects top 10,000 without Di candidate filtering.
+```
+python attack\attack_allCi_allDi_hungarian.py \
+  out\PWSCUP2025_Pre_Data_for_Attack\A22.csv \
+  out\PWSCUP2025_Pre_Data_for_Attack\C22_fix.csv \
+  out\PWSCUP2025_Pre_Data_for_Attack\D22.json \
+  --hung-mode knn -k 300 --topn 10000 \
+  --w-dist 1.0 --w-conf 1.0 --auto-wdist \
+  -o out\Fij_all_hungarian_22.csv \
+  --out-rank out\Fij_all_hungarian_22_rank.csv \
+  --out-map out\C22_matchmap_all_hungarian.csv
+```
+Notes:
+- Ci distance uses unified Manhattan distance on common columns (numeric scaled, categorical one-hot) and Hungarian min-sum matching. Unmatched Ai get a large fill cost.
+- Di distance is |pred - y| from Conf_Attack.
+- Combined cost per pair = `w_dist * Ci_distance + w_conf * |pred - y|` (smaller is better).
+- `--auto-wdist` scales `w_dist` by 1/(N+2*C) using counts of shared numeric (N) and categorical (C) columns.
+
 ## Error Fix Utilities
 ```
 python util/check_and_fix_csv.py \

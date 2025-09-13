@@ -236,3 +236,23 @@ Ci_Di_independent = [
 ]
 loop_for_all_teams(Ci_Di_independent)
 print(f"independent Ci+Di (greedy) scoring completed")
+
+# %%
+# AllCi + AllDi (Hungarian): rank by [Hungarian Ci distance + Di |pred - y|], pick top 10,000
+AllCi_AllDi_Hungarian = [
+    "python", "attack/attack_allCi_allDi_hungarian.py",
+    "out/PWSCUP2025_Pre_Data_for_Attack/A{id:02d}.csv",
+    "out/PWSCUP2025_Pre_Data_for_Attack/C{id:02d}_fix.csv",
+    "out/PWSCUP2025_Pre_Data_for_Attack/D{id:02d}.json",
+    "--hung-mode", "knn",
+    "-k", "300",
+    "--w-dist", "1.0",
+    "--w-conf", "1.0",
+    "--auto-wdist",
+    "--topn", "10000",
+    "-o", "out/Fij_all_hungarian_{id:02d}.csv",
+    "--out-rank", "out/Fij_all_hungarian_{id:02d}_rank.csv",
+    "--out-map", "out/C{id:02d}_matchmap_all_hungarian.csv",
+]
+loop_for_all_teams(AllCi_AllDi_Hungarian)
+print(f"AllCi+AllDi (Hungarian) scoring completed")

@@ -1,0 +1,274 @@
+from abc import ABC
+import argparse
+
+import numpy as np
+import pandas as pd
+
+from mia import infer_numeric_mask
+
+
+class AttackDiCiHungarian(ABC):
+    """
+    Score Di-selected Ai candidates using Hungarian Ci→Ai matched distances.
+
+    Flow:
+      1) Di step: obtain candidate mask via Pred_Attack and/or Conf_Attack
+         (threshold/topk/ratio; union or intersection). Also capture
+         |pred - y| (absolute error) from Conf_Attack as a penalty term.
+      2) Ci step (Hungarian): compute a global min-sum assignment of Ci rows
+         to unique Ai rows using unified Manhattan distance. For each Ai, we
+         obtain: matched flag (0/1) and matched distance (or large default if
+         not matched).
+      3) Scoring: score = (w_hits * matched) - (w_dist_eff * matched_dist)
+         - (w_conf * |pred - y|). Rank candidates by descending score and
+         select top-N.
+
+    Notes:
+      - Hungarian assignment is global and independent of Di candidates; we
+        apply the candidate mask only in the final ranking/selection stage.
+      - Use --auto-wdist to scale distance weight by 1/(N + 2*C), where N and
+        C are counts of numeric and categorical common columns between Ai/Ci.
+    """
+
+    def __init__(self, ci_csv, di_json,
+                 hung_mode="knn", k=300, fill_cost=1000.0, max_full_mn=30_000_000, verbose=False,
+                 w_hits=0.0, w_dist=1.0, w_conf=1.0, topn=1, auto_wdist=False, mode="union"):
+        self.ci_csv = ci_csv
+        self.di_json = di_json
+
+        self.hung_mode = hung_mode
+        self.k = int(k)
+        self.fill_cost = float(fill_cost)
+        self.max_full_mn = int(max_full_mn)
+        self.verbose = bool(verbose)
+
+        self.w_hits = float(w_hits)
+        self.w_dist = float(w_dist)
+        self.w_conf = float(w_conf)
+        self.topn = int(topn)
+        self.auto_wdist = bool(auto_wdist)
+        self.mode = mode
+
+        self.inferred = None
+        self.rank_table_ = None
+        self.match_table_ = None
+
+    def _select_di(self, ai_csv,
+                   pred_threshold=0.5, pred_topk=None, pred_pos_ratio=None,
+                   conf_threshold=0.1, conf_topk=None, conf_pos_ratio=None):
+        # Lazy-import to avoid heavy deps on --help
+        from attack_Di_ex import Pred_Attack, Conf_Attack
+
+        pred = Pred_Attack(self.di_json,
+                           threshold=pred_threshold,
+                           topk=pred_topk,
+                           pos_ratio=pred_pos_ratio)
+        _ = pred.infer(ai_csv)
+        s_pred = pred.inferred.iloc[:, 0].astype(int).values
+
+        conf = Conf_Attack(self.di_json,
+                           threshold=conf_threshold,
+                           topk=conf_topk,
+                           pos_ratio=conf_pos_ratio)
+        _ = conf.infer(ai_csv)
+        s_conf = conf.inferred.iloc[:, 0].astype(int).values
+        conf_score = getattr(conf, "score_", None)
+
+        if self.mode == "intersection":
+            cand = (s_pred & s_conf).astype(int)
+        else:
+            cand = (s_pred | s_conf).astype(int)
+
+        return cand, s_pred, s_conf, conf_score
+
+    def _hungarian_distances(self, ai_csv):
+        # Use the Ci Hungarian matcher to compute per-Ai matched distances
+        from attack_Ci_hungarian import AttackCiHungarian
+
+        h = AttackCiHungarian(
+            path_to_Ci_csv=self.ci_csv,
+            mode=self.hung_mode,
+            k=self.k,
+            fill_cost=self.fill_cost,
+            max_full_mn=self.max_full_mn,
+            verbose=self.verbose,
+        )
+        _ = h.infer(ai_csv)
+
+        # matched flag per Ai
+        matched = h.inferred.iloc[:, 0].to_numpy().astype(int)
+        n = matched.shape[0]
+
+        # distance per Ai (unmatched -> fill_cost)
+        dist = np.full(n, float(self.fill_cost), dtype=float)
+        mt = getattr(h, "match_table_", None)
+        if mt is not None and len(mt) > 0:
+            for _, row in mt.iterrows():
+                ai_idx = int(row["ai_idx"]) if "ai_idx" in row else int(row[1])
+                d = float(row["distance"]) if "distance" in row else float(row[2])
+                if 0 <= ai_idx < n:
+                    dist[ai_idx] = d
+
+        # Keep mapping table for optional export
+        self.match_table_ = mt
+        return matched, dist
+
+    def _effective_wdist(self, ai_csv):
+        if not self.auto_wdist:
+            return self.w_dist
+        try:
+            Ai_df = pd.read_csv(ai_csv, dtype=str, keep_default_na=False)
+            Ci_df = pd.read_csv(self.ci_csv, dtype=str, keep_default_na=False)
+            common = [c for c in Ai_df.columns if c in Ci_df.columns]
+            if not common:
+                return self.w_dist
+            num_mask = infer_numeric_mask(Ai_df, common)
+            n_num = int(num_mask.sum())
+            n_cat = int((~num_mask).sum())
+            denom = n_num + 2 * n_cat
+            if denom > 0:
+                w = self.w_dist / float(denom)
+                print(f"[auto-wdist] N={n_num}, C={n_cat}, denom={denom}, w_dist_eff={w:.6g}")
+                return w
+        except Exception as e:
+            print(f"[auto-wdist warn] failed to compute feature-based scaling: {e}")
+        return self.w_dist
+
+    def infer(self, ai_csv,
+              pred_threshold=0.5, pred_topk=None, pred_pos_ratio=None,
+              conf_threshold=0.1, conf_topk=None, conf_pos_ratio=None):
+        # 1) Di candidates and |pred - y|
+        cand, s_pred, s_conf, conf_score = self._select_di(
+            ai_csv,
+            pred_threshold=pred_threshold, pred_topk=pred_topk, pred_pos_ratio=pred_pos_ratio,
+            conf_threshold=conf_threshold, conf_topk=conf_topk, conf_pos_ratio=conf_pos_ratio,
+        )
+        n = cand.shape[0]
+
+        # 2) Hungarian matched distances and flags
+        matched, md = self._hungarian_distances(ai_csv)
+        if matched.shape[0] != n:
+            raise ValueError("Size mismatch between Hungarian results and Ai rows")
+
+        # 3) Scoring
+        w_dist_eff = self._effective_wdist(ai_csv)
+        score = (self.w_hits * matched) - (w_dist_eff * md)
+        if conf_score is not None:
+            score = score - (self.w_conf * conf_score)
+
+        # 4) Candidate restriction (if none, fallback to all)
+        if cand.sum() > 0:
+            mask = cand.astype(bool)
+        else:
+            print("[Warn] Di produced no candidates; ranking all rows by Hungarian distance.")
+            mask = np.ones(n, dtype=bool)
+
+        idx = np.arange(n)
+        idx_cand = idx[mask]
+        order = np.lexsort((idx_cand, md[idx_cand], -score[idx_cand]))
+        ranked_idx = idx_cand[order]
+
+        k = max(0, min(self.topn, ranked_idx.size))
+        sel = np.zeros(n, dtype=int)
+        if k > 0:
+            sel[ranked_idx[:k]] = 1
+
+        # Keep rank table
+        data = {
+            "ai_idx": ranked_idx,
+            "score": score[ranked_idx],
+            "hung_match": matched[ranked_idx],
+            "hung_dist": md[ranked_idx],
+            "pred_sel": s_pred[ranked_idx],
+            "conf_sel": s_conf[ranked_idx],
+        }
+        if conf_score is not None:
+            data["conf_abs_err"] = conf_score[ranked_idx]
+        self.rank_table_ = pd.DataFrame(data)
+
+        self.inferred = pd.DataFrame(sel)
+        print(f"[AttackDiCiHungarian] selected={int(sel.sum())}/{n} (topn={self.topn}, candidates={int(mask.sum())})")
+        return self.inferred
+
+    def save_inferred(self, path):
+        if self.inferred is None:
+            print("inferred is None. No file was saved.")
+        else:
+            self.inferred.to_csv(path, index=False, header=False)
+            print(f"inferred was successfully saved as {path}")
+
+
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser(description="Score Di-selected candidates using Hungarian Ci→Ai matched distances; select top-N")
+    ap.add_argument("Ai_csv", help="Path to Ai.csv")
+    ap.add_argument("Ci_csv", help="Path to Ci.csv")
+    ap.add_argument("Di_json", help="Path to Di model JSON (Booster.save_model)")
+
+    # Di selection knobs
+    ap.add_argument("--pred-threshold", type=float, default=0.5, help="Pred threshold (used when no topk/ratio)")
+    ap.add_argument("--pred-topk", type=int, default=None, help="Pred: select exactly top-K rows")
+    ap.add_argument("--pred-pos-ratio", type=float, default=None, help="Pred: select round(ratio*N) rows")
+
+    ap.add_argument("--conf-threshold", type=float, default=0.1, help="Conf: |p-y| <= threshold (when no topk/ratio)")
+    ap.add_argument("--conf-topk", type=int, default=None, help="Conf: select exactly top-K rows with smallest |p-y|")
+    ap.add_argument("--conf-pos-ratio", type=float, default=None, help="Conf: select round(ratio*N) rows")
+
+    ap.add_argument("--mode", choices=["union", "intersection"], default="union", help="Combine Pred/Conf candidates")
+
+    # Hungarian Ci options
+    ap.add_argument("--hung-mode", choices=["auto", "full", "knn"], default="knn", help="Hungarian: 'auto' tries full up to size limit; 'knn' restricts candidates per Ci")
+    ap.add_argument("-k", "--k", type=int, default=300, help="Hungarian (knn): number of nearest Ai candidates per Ci")
+    ap.add_argument("--fill-cost", type=float, default=1000.0, help="Hungarian (knn): cost for non-candidate pairs")
+    ap.add_argument("--max-full-mn", type=int, default=30_000_000, help="Hungarian (auto/full): max |Ci|×|Ai| to attempt full matrix")
+    ap.add_argument("--verbose", action="store_true", help="Enable Hungarian internal logs")
+
+    # Scoring knobs
+    ap.add_argument("--w-hits", type=float, default=0.0, help="weight for hungarian matched flag (0/1) in score")
+    ap.add_argument("--w-dist", type=float, default=1.0, help="weight for matched distance in score (larger penalizes distance)")
+    ap.add_argument("--w-conf", type=float, default=1.0, help="weight for |pred - y| from Di (smaller is better)")
+    ap.add_argument("--auto-wdist", action="store_true", help="auto-scale distance weight by 1/(N + 2*C) using Ai/Ci common columns")
+
+    # Output control
+    ap.add_argument("--topn", type=int, default=1, help="number of Ai rows to mark as 1 (default: 1)")
+    ap.add_argument("-o", "--out", default="Fij.csv", help="output CSV path (1 column, no header)")
+    ap.add_argument("--out-rank", default=None, help="optional CSV to save ranked candidates with scores")
+    ap.add_argument("--out-map", default=None, help="optional CSV to save full Hungarian match table [ci_idx, ai_idx, distance]")
+
+    args = ap.parse_args()
+
+    attacker = AttackDiCiHungarian(
+        ci_csv=args.Ci_csv,
+        di_json=args.Di_json,
+        hung_mode=args.hung_mode,
+        k=args.k,
+        fill_cost=args.fill_cost,
+        max_full_mn=args.max_full_mn,
+        verbose=args.verbose,
+        w_hits=args.w_hits,
+        w_dist=args.w_dist,
+        w_conf=args.w_conf,
+        topn=args.topn,
+        auto_wdist=args.auto_wdist,
+        mode=args.mode,
+    )
+
+    attacker.infer(
+        args.Ai_csv,
+        pred_threshold=args.pred_threshold,
+        pred_topk=args.pred_topk,
+        pred_pos_ratio=args.pred_pos_ratio,
+        conf_threshold=args.conf_threshold,
+        conf_topk=args.conf_topk,
+        conf_pos_ratio=args.conf_pos_ratio,
+    )
+    attacker.save_inferred(args.out)
+    if args.out_rank and attacker.rank_table_ is not None:
+        attacker.rank_table_.to_csv(args.out_rank, index=False)
+        print(f"rank table was successfully saved as {args.out_rank}")
+    if args.out_map and attacker.match_table_ is not None:
+        try:
+            attacker.match_table_.to_csv(args.out_map, index=False)
+            print(f"match table was successfully saved as {args.out_map}")
+        except Exception as e:
+            print(f"[warn] failed to save Hungarian match table: {e}")
+

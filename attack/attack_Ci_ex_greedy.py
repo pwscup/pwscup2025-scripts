@@ -200,6 +200,94 @@ class AttackCiGreedyMatch(AttackCiBase):
 
 
 # %%
+# Greedy matcher that does not depend on a fixed k.
+# It expands the rank window automatically until all Ci rows are matched
+# (or until all Ai rows are exhausted). Provides the same outputs as
+# AttackCiGreedyMatch plus distance_per_ai_ (unmatched -> 1000.0).
+class AttackCiGreedyMatchAll(AttackCiBase):
+    def infer(self, path_to_Ai_csv):
+        Ai_df = pd.read_csv(path_to_Ai_csv, dtype=str, keep_default_na=False)
+
+        # Build features: X1 (Ai), X2 (Ci)
+        X1, X2 = build_feature_matrices(Ai_df, self.Ci_df)
+
+        m = len(Ai_df)
+        n = len(self.Ci_df)
+
+        # Fallback: no comparable columns or empty inputs
+        if X1.shape[1] == 0 or X2.shape[1] == 0 or m == 0 or n == 0:
+            self.inferred = pd.DataFrame(np.zeros(m, dtype=int))
+            self.match_table_ = pd.DataFrame(columns=["ci_idx", "ai_idx", "distance", "rank"])
+            self.distance_per_ai_ = np.full(m, 1000.0, dtype=float)
+            return self.inferred
+
+        # Nearest neighbors on Ai, Manhattan distance (works for 0/1 one-hot + scaled numeric)
+        nn = NearestNeighbors(metric="manhattan")
+        nn.fit(X1)
+
+        assigned_ci = np.full(n, -1, dtype=int)  # assigned Ai index per Ci (-1 if unassigned)
+        used_ai = np.zeros(m, dtype=bool)        # whether Ai is already used by some Ci
+        pairs = []                                # (ci_idx, ai_idx, distance, rank)
+
+        # Expand rank window progressively to avoid computing full n_neighbors=m at once
+        r_start = 0
+        # Use provided k only as an initial hint; expand automatically as needed
+        cur_k = min(max(32, int(getattr(self, "k", 5))), m)
+        while True:
+            if r_start >= m:
+                break
+            req_k = min(m, cur_k)
+            dists, inds = nn.kneighbors(X2, n_neighbors=req_k, return_distance=True)
+
+            # Process ranks r=r_start..req_k-1 greedily
+            for r in range(r_start, req_k):
+                ci_unassigned = np.flatnonzero(assigned_ci == -1)
+                if ci_unassigned.size == 0:
+                    break
+                cand_d = dists[ci_unassigned, r]
+                cand_ai = inds[ci_unassigned, r]
+                order = np.argsort(cand_d)
+                for t in order:
+                    ci = ci_unassigned[t]
+                    ai = int(cand_ai[t])
+                    dist = float(cand_d[t])
+                    if assigned_ci[ci] == -1 and not used_ai[ai]:
+                        assigned_ci[ci] = ai
+                        used_ai[ai] = True
+                        pairs.append((int(ci), ai, dist, int(r)))
+
+            # Stop if everything is matched or we used all Ai or we reached full window
+            if (assigned_ci != -1).all() or used_ai.all() or req_k >= m:
+                break
+            # Expand window and continue
+            r_start = req_k
+            cur_k = min(m, max(req_k + 1, req_k * 2))
+
+        remaining = int((assigned_ci == -1).sum())
+        if remaining > 0:
+            print(f"[Info] {remaining} Ci rows remained unmatched after expanding ranks up to {r_start}. All available Ai may have been used.")
+
+        # Output: 0/1 vector for Ai
+        marks = np.zeros(m, dtype=int)
+        for ai in assigned_ci:
+            if ai >= 0:
+                marks[ai] = 1
+        self.inferred = pd.DataFrame(marks.astype(int))
+
+        # Distance per Ai (unmatched -> 1000.0)
+        distance_per_ai = np.full(m, 1000.0, dtype=float)
+        for ci, ai, dist, r in pairs:
+            if ai >= 0:
+                distance_per_ai[ai] = dist
+        self.distance_per_ai_ = distance_per_ai
+
+        # Output: match table
+        self.match_table_ = pd.DataFrame(pairs, columns=["ci_idx", "ai_idx", "distance", "rank"])
+
+        return self.inferred
+
+
+# %%
 # if __name__ == "__main__":
 #     ap = argparse.ArgumentParser(description="For each row in Ci, mark its nearest row in Ai (1), others 0. Output: 1-column CSV.")
 #     ap.add_argument("path_to_Ai_csv", help="CSV with header (reference; e.g., 100000 rows)")
@@ -292,7 +380,7 @@ if __name__ == "__main__":
     ap.add_argument("-m", "--mode", choices=["nn", "greedy"], default="nn",
                     help="nn: output knn_hits & min_dist per Ai; greedy: 1-to-1 matching using ranks")
     ap.add_argument("-k", "--k", type=int, default=5,
-                    help="number of neighbors (k). For greedy, increase if some Ci remain unmatched.")
+                    help="number of neighbors (k). In greedy mode, ranks expand automatically; this is only an initial hint.")
     ap.add_argument("-o", "--out", default="Fij.csv",
                     help="Output CSV path. For 'nn': 2 columns [knn_hits, min_dist]. For 'greedy': 1 column (0/1).")
     ap.add_argument("--out-map", default=None,
@@ -303,7 +391,7 @@ if __name__ == "__main__":
     if args.mode == "nn":
         attacker = AttackCiNN(args.path_to_Ci_csv, args.k)
     else:
-        attacker = AttackCiGreedyMatch(args.path_to_Ci_csv, args.k)
+        attacker = AttackCiGreedyMatchAll(args.path_to_Ci_csv, args.k)
 
     # 推論
     _ = attacker.infer(args.path_to_Ai_csv)

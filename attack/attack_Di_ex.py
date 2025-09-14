@@ -207,6 +207,8 @@ class Conf_Attack(Attack_Di_Base):
         pred = self.xgbt_model.predict(xgb.DMatrix(self.X))
         # スコア = |p - y|
         score = np.abs(pred - self.y)  # ndarray shape (n,)
+        self.pred_ = pred
+        self.score_ = score
 
         n = score.shape[0]
 

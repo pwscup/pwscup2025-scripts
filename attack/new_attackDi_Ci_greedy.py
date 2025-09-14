@@ -4,28 +4,28 @@ import argparse
 import pandas as pd
 import numpy as np
 
-# Use extended Di attacks (support topk/ratio) and k-NN Ci stats
-from attack_Ci_ex import AttackCiNN as AttackCiKNN
+# Use greedy Ci matcher (k ignored; expands automatically)
+from attack_Ci_ex_greedy import AttackCiGreedyMatchAll as AttackCiGreedy
 from mia import infer_numeric_mask
 
 
-class NewAttackDiCi(ABC):
+class NewAttackDiCiGreedy(ABC):
     """
-    Score Di-selected candidates using Ci distances, then pick top-N.
+    Score Di-selected candidates using greedy Ci distances, then pick top-N.
 
     - Di step: select candidates via Pred_Attack and/or Conf_Attack
       using threshold/topk/ratio options (union or intersection).
-    - Ci step: compute k-NN stats (hits, min_dist) for Ai vs Ci; rank
-      candidates primarily by smaller min_dist (optionally include hits).
+    - Ci step (greedy): compute a 1-to-1 Ci→Ai matching by progressively
+      expanding kNN ranks until all Ci are matched (or Ai exhausted).
+      Each matched Ai has an associated distance; unmatched Ai get 1000.0.
+      Rank candidates primarily by smaller matched distance (optionally add |pred - y| penalty).
     """
-    def __init__(self, ci_csv, di_json, k=5, mode="union", w_hits=0.0, w_dist=1.0, w_conf=1.0, topn=1, auto_wdist=False):
+    def __init__(self, ci_csv, di_json, mode="union", w_hits=0.0, w_dist=1.0, w_conf=1.0, topn=1, auto_wdist=False):
         self.ci_csv = ci_csv
         self.di_json = di_json
-        self.k = int(k)
         self.mode = mode
         self.w_hits = float(w_hits)
         self.w_dist = float(w_dist)
-        # Smaller |pred - y| is better; weight defaults to 1.0
         self.w_conf = float(w_conf)
         self.topn = int(topn)
         self.auto_wdist = bool(auto_wdist)
@@ -54,7 +54,6 @@ class NewAttackDiCi(ABC):
                            pos_ratio=conf_pos_ratio)
         _ = conf.infer(ai_csv)
         s_conf = conf.inferred.iloc[:, 0].astype(int).values
-        # Capture |pred - y| vector from Conf_Attack (added attribute)
         conf_score = getattr(conf, "score_", None)
 
         if self.mode == "intersection":
@@ -64,12 +63,25 @@ class NewAttackDiCi(ABC):
 
         return cand, s_pred, s_conf, conf_score
 
-    def _score_with_ci(self, ai_csv, conf_score=None):
-        ci = AttackCiKNN(self.ci_csv, self.k)
-        df = ci.infer(ai_csv)
-        # hits: larger is better; min_dist: smaller is better
-        hits = df.iloc[:, 0].to_numpy()
-        md = df.iloc[:, 1].to_numpy()
+    def _score_with_ci_greedy(self, ai_csv, conf_score=None):
+        # Run greedy Ci matcher (k ignored inside; expands ranks automatically)
+        ci = AttackCiGreedy(self.ci_csv, k=1)
+        _ = ci.infer(ai_csv)
+        # hits: 1 if Ai matched by some Ci, else 0
+        hits = ci.inferred.iloc[:, 0].to_numpy().astype(int)
+        # distance per Ai (unmatched -> 1000.0)
+        md = getattr(ci, "distance_per_ai_", None)
+        if md is None:
+            # Reconstruct distances from match_table_ if needed
+            m = hits.size
+            md = np.full(m, 1000.0, dtype=float)
+            mt = getattr(ci, "match_table_", None)
+            if mt is not None and len(mt) > 0:
+                for _, row in mt.iterrows():
+                    ai_idx = int(row["ai_idx"]) if "ai_idx" in row else int(row[1])
+                    dist = float(row["distance"]) if "distance" in row else float(row[2])
+                    if 0 <= ai_idx < m:
+                        md[ai_idx] = dist
         # Optional auto scaling for distance weight by (N + 2*C)
         w_dist_eff = self.w_dist
         if self.auto_wdist:
@@ -90,7 +102,6 @@ class NewAttackDiCi(ABC):
         # Convert to score where larger is better
         score = self.w_hits * hits - w_dist_eff * md
         if conf_score is not None:
-            # Smaller |pred - y| is better → subtract with weight
             score = score - self.w_conf * conf_score
         return score, hits, md
 
@@ -105,19 +116,19 @@ class NewAttackDiCi(ABC):
         )
         n = cand.shape[0]
 
-        # Ci step scoring
-        score, hits, md = self._score_with_ci(ai_csv, conf_score=conf_score)
+        # Ci step scoring (greedy distances)
+        score, hits, md = self._score_with_ci_greedy(ai_csv, conf_score=conf_score)
 
         # Restrict to candidates if any; otherwise fall back to all rows
         if cand.sum() > 0:
             mask = cand.astype(bool)
         else:
-            print("[Warn] Di produced no candidates; ranking all rows by Ci distance.")
+            print("[Warn] Di produced no candidates; ranking all rows by greedy Ci distance.")
             mask = np.ones(n, dtype=bool)
 
         idx = np.arange(n)
         idx_cand = idx[mask]
-        # Sort by score desc (i.e., small distance wins when w_dist>0). Tie-break by distance then index
+        # Sort by score desc; tie-break by distance then index
         order = np.lexsort((idx_cand, md[idx_cand], -score[idx_cand]))
         ranked_idx = idx_cand[order]
 
@@ -130,8 +141,8 @@ class NewAttackDiCi(ABC):
         data = {
             "ai_idx": ranked_idx,
             "score": score[ranked_idx],
-            "knn_hits": hits[ranked_idx],
-            "min_dist": md[ranked_idx],
+            "greedy_match": hits[ranked_idx],
+            "greedy_dist": md[ranked_idx],
             "pred_sel": s_pred[ranked_idx],
             "conf_sel": s_conf[ranked_idx],
         }
@@ -141,7 +152,7 @@ class NewAttackDiCi(ABC):
         self.rank_table_ = pd.DataFrame(data)
 
         self.inferred = pd.DataFrame(sel)
-        print(f"[NewAttackDiCi] selected={int(sel.sum())}/{n} (topn={self.topn}, candidates={int(mask.sum())})")
+        print(f"[NewAttackDiCiGreedy] selected={int(sel.sum())}/{n} (topn={self.topn}, candidates={int(mask.sum())})")
         return self.inferred
 
     def save_inferred(self, path):
@@ -153,7 +164,7 @@ class NewAttackDiCi(ABC):
 
 
 if __name__ == "__main__":
-    ap = argparse.ArgumentParser(description="Score Di-selected candidates by Ci distance and pick top-N members")
+    ap = argparse.ArgumentParser(description="Score Di-selected candidates by greedy Ci distance and pick top-N members")
     ap.add_argument("Ai_csv", help="Path to Ai.csv")
     ap.add_argument("Ci_csv", help="Path to Ci.csv")
     ap.add_argument("Di_json", help="Path to Di model JSON (Booster.save_model)")
@@ -169,10 +180,9 @@ if __name__ == "__main__":
 
     ap.add_argument("--mode", choices=["union", "intersection"], default="union", help="Combine Pred/Conf candidates")
 
-    # Ci scoring knobs
-    ap.add_argument("-k", "--k", type=int, default=5, help="k neighbors for Ci k-NN stats")
-    ap.add_argument("--w-hits", type=float, default=0.0, help="weight for knn_hits in score")
-    ap.add_argument("--w-dist", type=float, default=1.0, help="weight for min_dist in score (larger penalizes distance)")
+    # Scoring knobs
+    ap.add_argument("--w-hits", type=float, default=0.0, help="weight for greedy_match (0/1) in score")
+    ap.add_argument("--w-dist", type=float, default=1.0, help="weight for greedy_dist in score (larger penalizes distance)")
     ap.add_argument("--w-conf", type=float, default=1.0, help="weight for |pred - y| from Di (smaller is better)")
     ap.add_argument("--auto-wdist", action="store_true", help="auto-scale distance weight by 1/(N + 2*C) using Ai/Ci common columns")
 
@@ -180,13 +190,13 @@ if __name__ == "__main__":
     ap.add_argument("--topn", type=int, default=1, help="number of Ai rows to mark as 1 (default: 1)")
     ap.add_argument("-o", "--out", default="Fij.csv", help="output CSV path (1 column, no header)")
     ap.add_argument("--out-rank", default=None, help="optional CSV to save ranked candidates with scores")
+    ap.add_argument("--out-map", default=None, help="optional CSV to save full greedy match table [ci_idx, ai_idx, distance, rank]")
 
     args = ap.parse_args()
 
-    attacker = NewAttackDiCi(
+    attacker = NewAttackDiCiGreedy(
         ci_csv=args.Ci_csv,
         di_json=args.Di_json,
-        k=args.k,
         mode=args.mode,
         w_hits=args.w_hits,
         w_dist=args.w_dist,
@@ -208,3 +218,30 @@ if __name__ == "__main__":
     if args.out_rank and attacker.rank_table_ is not None:
         attacker.rank_table_.to_csv(args.out_rank, index=False)
         print(f"rank table was successfully saved as {args.out_rank}")
+    # Save greedy match table if requested
+    if args.out_map:
+        try:
+            # Re-run lightweight greedy to access its internal table
+            # Note: AttackCiGreedyMatchAll was already used inside; but to keep coupling low, run again.
+            from attack_Ci_ex_greedy import AttackCiGreedyMatchAll as _Greedy
+            g = _Greedy(args.Ci_csv, k=1)
+            _ = g.infer(args.Ai_csv)
+            if getattr(g, "match_table_", None) is not None:
+                g.match_table_.to_csv(args.out_map, index=False)
+                print(f"match table was successfully saved as {args.out_map}")
+        except Exception as e:
+            print(f"[warn] failed to save match table: {e}")
+
+    # Print helpful stats about greedy coverage
+    try:
+        n_total = len(pd.read_csv(args.Ai_csv, nrows=0))  # placeholder to avoid reading full; not used
+    except Exception:
+        n_total = None
+    try:
+        # Recover candidate mask size via rank_table_ (may be less than full Ai)
+        if attacker.rank_table_ is not None:
+            in_cand_greedy = int((attacker.rank_table_.get("greedy_match", pd.Series([], dtype=int)) > 0).sum())
+            cand_size = int(attacker.rank_table_.shape[0])
+            print(f"[stats greedy] matched within candidates = {in_cand_greedy}/{cand_size} shown in rank table")
+    except Exception as e:
+        print(f"[warn] failed to print greedy in-candidate stats: {e}")

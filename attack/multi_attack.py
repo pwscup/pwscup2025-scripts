@@ -108,7 +108,7 @@ print(f"sample Ci-attack completed")
 # %%
 ## Attack of Ci with extended version
 Ci_attack_extended = ["python", "attack/attack_Ci_ex.py", "out/PWSCUP2025_Pre_Data_for_Attack/A{id:02d}.csv", "out/PWSCUP2025_Pre_Data_for_Attack/C{id:02d}_fix.csv", "-o", "out/C{id:02d}_inferred_ex.csv", "-k", "1"]
-loop_for_all_teams(Ci_attack_extended, [2,3,5])
+loop_for_all_teams(Ci_attack_extended)
 print(f"extended Ci-attack completed")
 
 # %%
@@ -116,21 +116,38 @@ print(f"extended Ci-attack completed")
 mode = "nn"
 k = 5 # choose Nearest k neighbors
 Ci_attack_knn = ["python", "attack/attack_Ci_ex_greedy.py", "out/PWSCUP2025_Pre_Data_for_Attack/C{id:02d}_fix.csv", "out/PWSCUP2025_Pre_Data_for_Attack/A{id:02d}.csv", "-m", mode, "-k", str(k), "-o", f"out/C{{id:02d}}_inferred_ex_greedy_k{k}_{mode}.csv"]
-loop_for_all_teams(Ci_attack_knn, [2,3,9])
+loop_for_all_teams(Ci_attack_knn)
 print(f"k-NN Ci-attack completed")
 
 # %%
 ## Attack of Ci with greedy-k-NN version
 mode = "greedy"
-k = 100 # choose greedy k ranks (need enough k for computation)
+k = 300 # choose greedy k ranks (need enough big k for computation)
 Ci_attack_greedy = ["python", "attack/attack_Ci_ex_greedy.py", "out/PWSCUP2025_Pre_Data_for_Attack/C{id:02d}_fix.csv", "out/PWSCUP2025_Pre_Data_for_Attack/A{id:02d}.csv", "-m", mode, "-k", str(k), "-o", f"out/C{{id:02d}}_inferred_ex_greedy_k{k}_{mode}.csv", "--out-map", f"out/C{{id:02d}}_matchmap_k{k}.csv"]
-loop_for_all_teams(Ci_attack_greedy, [2,3,9,11])
+loop_for_all_teams(Ci_attack_greedy)
 print(f"greedy-k-NN Ci-attack completed")
+
+# %%
+## Attack of Ci with Hungarian assignment (min-sum matching)
+# For large |Ai|×|Ci|, 'knn' mode is recommended (use top-k candidates per Ci).
+hung_mode = "knn"  # use "auto" to try full when feasible
+k_hung = 300       # number of Ai candidates per Ci in knn mode
+Ci_attack_hungarian = [
+    "python", "attack/attack_Ci_hungarian.py",
+    "out/PWSCUP2025_Pre_Data_for_Attack/A{id:02d}.csv",
+    "out/PWSCUP2025_Pre_Data_for_Attack/C{id:02d}_fix.csv",
+    "-m", hung_mode,
+    "-k", str(k_hung),
+    "-o", f"out/C{{id:02d}}_inferred_hungarian_{hung_mode}_k{k_hung}.csv",
+    "--out-map", f"out/C{{id:02d}}_matchmap_hungarian_{hung_mode}_k{k_hung}.csv",
+]
+loop_for_all_teams(Ci_attack_hungarian)
+print(f"Hungarian Ci-attack completed")
 
 # %%
 ## Attack of Di with original samples
 Di_attack_original = ["python", "attack/attack_Di.py", "out/PWSCUP2025_Pre_Data_for_Attack/D{id:02d}.json", "out/PWSCUP2025_Pre_Data_for_Attack/A{id:02d}.csv"]
-loop_for_all_teams(Di_attack_original, [2,3])
+loop_for_all_teams(Di_attack_original)
 print(f"sample Di-attack completed")
 
 # %%
@@ -138,7 +155,7 @@ print(f"sample Di-attack completed")
 # python attack\attack_Di_ex.py out\PWSCUP2025_Pre_Data_for_Attack\D22.json out\PWSCUP2025_Pre_Data_for_Attack\A22.csv [--pred-threshold 0.5] [--pred-topk 10000] [--pred-pos-ratio 0.10] [--conf-threshold 0.1] [--conf-topk 10000] [--conf-pos-ratio 0.10] --out-pred out/inferred_membership1_22_ex.csv --out-conf out/inferred_membership2_22_ex.csv
 # if threshold is not specified, default values will be used.
 Di_attack_extended = ["python", "attack/attack_Di_ex.py", "out/PWSCUP2025_Pre_Data_for_Attack/D{id:02d}.json", "out/PWSCUP2025_Pre_Data_for_Attack/A{id:02d}.csv", "--out-pred", "out/inferred_membership1_{id:02d}_ex.csv", "--out-conf", "out/inferred_membership2_{id:02d}_ex.csv"]
-loop_for_all_teams(Di_attack_extended, [2,3,5,7])
+loop_for_all_teams(Di_attack_extended)
 print(f"extended Di-attack completed")
 
 # %%
@@ -146,7 +163,7 @@ print(f"extended Di-attack completed")
 # python attack\attack_Di_ex.py out\PWSCUP2025_Pre_Data_for_Attack\D22.json out\PWSCUP2025_Pre_Data_for_Attack\A22.csv [--pred-threshold 0.5] [--pred-topk 10000] [--pred-pos-ratio 0.10] [--conf-threshold 0.1] [--conf-topk 10000] [--conf-pos-ratio 0.10] --out-pred out/inferred_membership1_22_ex.csv --out-conf out/inferred_membership2_22_ex.csv
 # if threshold is not specified, default values will be used.
 Combi_attack_original = ["python", "attack/attack_example_ex.py", "--Ai_csv", "out/PWSCUP2025_Pre_Data_for_Attack/A{id:02d}.csv", "-o", "out/Fij_{id:02d}.csv", "out/C{id:02d}_inferred.csv", "out/inferred_membership1_{id:02d}_ex.csv", "out/inferred_membership2_{id:02d}_ex.csv"]
-loop_for_all_teams(Combi_attack_original, [3,5,6,7,8])
+loop_for_all_teams(Combi_attack_original)
 print(f"original combination attack completed")
 
 # %%
@@ -156,7 +173,86 @@ print(f"original combination attack completed")
 limit = 10000 # limit of number of samples to be inferred
 
 Combi_attack_extended = ["python", "attack/attack_example_ex.py", "--Ai_csv", "out/PWSCUP2025_Pre_Data_for_Attack/A{id:02d}.csv", "-o", "out/Fij_{id:02d}.csv", "-l", str(limit), f"out/C{{id:02d}}_inferred_ex_greedy_k{k}_{mode}.csv", "out/inferred_membership1_{id:02d}_ex.csv", "out/inferred_membership2_{id:02d}_ex.csv"]
-loop_for_all_teams(Combi_attack_extended, [3,5,8,9,10])
+loop_for_all_teams(Combi_attack_extended)
 print(f"extended combination attack completed")
 
 
+# %%
+# New Di->Ci scoring attack (union of Di selections, rank by Ci distance and |pred - y|)
+# Example knobs: threshold-based (broader candidates), k=5, w_conf=1.0, select topn=10000
+New_DiCi_scoring = [
+    "python", "attack/new_attackDi_Ci.py",
+    "out/PWSCUP2025_Pre_Data_for_Attack/A{id:02d}.csv",
+    "out/PWSCUP2025_Pre_Data_for_Attack/C{id:02d}_fix.csv",
+    "out/PWSCUP2025_Pre_Data_for_Attack/D{id:02d}.json",
+    "--pred-threshold", "0.5",
+    "--conf-threshold", "0.5",
+    "--mode", "union",
+    "-k", "5",
+    "--w-conf", "1.0",
+    "--auto-wdist",
+    "--topn", "10000",
+    "-o", "out/Fij_new_{id:02d}.csv",
+    "--out-rank", "out/Fij_new_{id:02d}_rank.csv",
+]
+loop_for_all_teams(New_DiCi_scoring)
+print(f"new Di->Ci scoring attack completed")
+
+# %%
+# New Di->Ci scoring attack (greedy Ci matching; k ignored, ranks expand automatically)
+New_DiCi_scoring_greedy = [
+    "python", "attack/new_attackDi_Ci_greedy.py",
+    "out/PWSCUP2025_Pre_Data_for_Attack/A{id:02d}.csv",
+    "out/PWSCUP2025_Pre_Data_for_Attack/C{id:02d}_fix.csv",
+    "out/PWSCUP2025_Pre_Data_for_Attack/D{id:02d}.json",
+    "--pred-threshold", "0.5",
+    "--conf-threshold", "0.5",
+    "--mode", "union",
+    "--w-conf", "1.0",
+    "--auto-wdist",
+    "--topn", "10000",
+    "-o", "out/Fij_new_greedy_{id:02d}.csv",
+    "--out-rank", "out/Fij_new_greedy_{id:02d}_rank.csv",
+    "--out-map", "out/C{id:02d}_matchmap_greedy.csv",
+]
+loop_for_all_teams(New_DiCi_scoring_greedy)
+print(f"new Di->Ci scoring (greedy) completed")
+
+# %%
+# Independent Ci(Distance, greedy) + Di(|pred - y|) scoring attack
+# Greedy explores to match |Ci| items; rank independently with weights; select top 10,000
+Ci_Di_independent = [
+    "python", "attack/attack_Ci_Di_independent.py",
+    "out/PWSCUP2025_Pre_Data_for_Attack/A{id:02d}.csv",
+    "out/PWSCUP2025_Pre_Data_for_Attack/C{id:02d}_fix.csv",
+    "out/PWSCUP2025_Pre_Data_for_Attack/D{id:02d}.json",
+    "--w-conf", "1.0",
+    "--auto-wdist",
+    "--k-hint", "300",
+    "--topn", "10000",
+    "-o", "out/Fij_independent_{id:02d}.csv",
+    "--out-rank", "out/Fij_independent_{id:02d}_rank.csv",
+    "--out-map", "out/C{id:02d}_matchmap_independent.csv",
+]
+loop_for_all_teams(Ci_Di_independent)
+print(f"independent Ci+Di (greedy) scoring completed")
+
+# %%
+# AllCi + AllDi (Hungarian): rank by [Hungarian Ci distance + Di |pred - y|], pick top 10,000
+AllCi_AllDi_Hungarian = [
+    "python", "attack/attack_allCi_allDi_hungarian.py",
+    "out/PWSCUP2025_Pre_Data_for_Attack/A{id:02d}.csv",
+    "out/PWSCUP2025_Pre_Data_for_Attack/C{id:02d}_fix.csv",
+    "out/PWSCUP2025_Pre_Data_for_Attack/D{id:02d}.json",
+    "--hung-mode", "knn",
+    "-k", "300",
+    "--w-dist", "1.0",
+    "--w-conf", "1.0",
+    "--auto-wdist",
+    "--topn", "10000",
+    "-o", "out/Fij_all_hungarian_{id:02d}.csv",
+    "--out-rank", "out/Fij_all_hungarian_{id:02d}_rank.csv",
+    "--out-map", "out/C{id:02d}_matchmap_all_hungarian.csv",
+]
+loop_for_all_teams(AllCi_AllDi_Hungarian)
+print(f"AllCi+AllDi (Hungarian) scoring completed")

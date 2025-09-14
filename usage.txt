@@ -1,215 +1,194 @@
-## This memo is for reference, history of my testing
-## input folder: in/
-### place input files(B22_*.csv) 
+## PWSCUP 2025 Scripts — Usage Guide
 
-## output folder: out/
-### output files(C22_*.csv, C22_*.csv_shuffled.csv, sample_D22_*.json will be generated)
+This guide summarizes common workflows, commands, and tips for running the anonymization, evaluation, and attack scripts. Examples assume Windows paths; adjust as needed.
 
+## Folders
+- Input: place `B22_*.csv` files under `in\`
+- Output: generated files go to `out\` (e.g., `C22_*.csv`, `C22_*.csv_shuffled.csv`, `sample_D22_*.json`)
 
-## anonymization
-### B22_3
+## Anonymization Pipeline (example: B22_3)
+```
 python anonymization/ano.py in/B22_3.csv out/C22_3.csv
 python anonymization/randomshuffle_rows.py out/C22_3.csv out/C22_3_shuffled.csv
 python anonymization/gen_Di.py in/B22_3.csv out/C22_3_shuffled.csv out/sample_D22_3.json
+```
 
-### evaluation of accuracy C22_*
+### Accuracy check for C22_*
+```
 python anonymization/MLacc_files.py
-output: out/MLacc_files.txt
-#### This accuracy only depends on the inference errors of "stroke_flag".
+```
+Output: `out/MLacc_files.txt`
 
-## evaluation
-### eval stats of C22_*
-python evaluation/eval_all.py in/B22_1.csv out/C22_1_shuffled.csv 
-python evaluation/eval_all.py in/B22_2.csv out/C22_2_shuffled.csv 
-python evaluation/eval_all.py in/B22_3.csv out/C22_3_shuffled.csv 
+Note: The accuracy here reflects inference errors on `stroke_flag` only.
 
-#### C22_1_shuffled
-stats_diff max_abs: 0.20361871624657207
-LR_asthma_diff max_abs: 0.8019302766208476
-KW_IND_diff max_abs: 0.163076116170131
-Ci utility: 52.55512349431754 / 80
+## Evaluation (Ci utility and stats)
+Evaluate statistics/utility for shuffled C22 files:
+```
+python evaluation/eval_all.py in/B22_1.csv out/C22_1_shuffled.csv
+python evaluation/eval_all.py in/B22_2.csv out/C22_2_shuffled.csv
+python evaluation/eval_all.py in/B22_3.csv out/C22_3_shuffled.csv
+```
 
-#### C22_2_shuffled
-stats_diff max_abs: 0.21152741173100845
-LR_asthma_diff max_abs: 0.8056547462616338
-KW_IND_diff max_abs: 0.1472544657619886
-Ci utility: 52.48071929028721 / 80
+Sample results (for reference):
+- C22_1_shuffled: stats_diff max_abs=0.2036; LR_asthma_diff max_abs=0.8019; KW_IND_diff max_abs=0.1631; Ci utility=52.56/80
+- C22_2_shuffled: stats_diff max_abs=0.2115; LR_asthma_diff max_abs=0.8057; KW_IND_diff max_abs=0.1473; Ci utility=52.48/80
+- C22_3_shuffled: stats_diff max_abs=0.2265; LR_asthma_diff max_abs=0.8532; KW_IND_diff max_abs=0.1545; Ci utility=50.78/80
+- Chanh_C22_3_shuffled_K10: Ci utility=45.34/80 (stats_diff max_abs=0.3350)
+- Chanh_C22_3_shuffled_K5: Ci utility=60.81/80 (stats_diff max_abs=0.1771)
+- Chanh_C22_2_shuffled_K5: Ci utility=51.77/80 (stats_diff max_abs=0.2168)
+- Chanh_C22_3_shuffled_K5_nocat: Ci utility=57.88/80 (stats_diff max_abs=0.1692)
 
-#### C22_3_shuffled
-stats_diff max_abs: 0.22649723157221544
-LR_asthma_diff max_abs: 0.8532401623088031
-KW_IND_diff max_abs: 0.15451860270480708
-Ci utility: 50.78493543683918 / 80
+## CSV Sanity Check
+```
+python check_csv.py out/test/C22_3_shuffled.csv out\sample_D22_1.json
+```
 
-#### Chanh_C22_3_shuffled_K10
-stats_diff max_abs: 0.33499498161891705
-LR_asthma_diff max_abs: 0.9356853717866677
-KW_IND_diff max_abs: 0.1274700092184904
-Ci utility: 45.337093115140156 / 80
+## Attack Setup
+1) Create directory: `out\PWSCUP2025_Pre_Data_for_Attack`
+2) Unzip all `PWSCUP2025_Pre_Data_for_Attack_**` into `out\PWSCUP2025_Pre_Data_for_Attack`
 
-#### Chanh_C22_3_shuffled_K5
-stats_diff max_abs: 0.1771414923583018
-LR_asthma_diff max_abs: 0.520010587532846
-KW_IND_diff max_abs: 0.08529895107252361
-Ci utility: 60.80814953356054 / 80
+Attack types:
+- attackCi: distance-based attack on Ai↔Ci common columns
+- attackDi: combination of Prediction attack and Confidence attack
 
-#### Chanh_C22_1_shuffled_K5
-(pwscup2025_20250826) C:\Users\Hinata\Documents\PWSCUP2025\pwscup2025-scripts>python evaluation/eval_all.py in/B22_3.csv out/C22_3_shuffled.csv 
-stats_diff max_abs: 0.1872921005978505
-LR_asthma_diff max_abs: 0.8820271801074642
-KW_IND_diff max_abs: 0.10375945302920059
-Ci utility: 52.79258331335269 / 80
+Example (distance + prediction + confidence):
+```
+python attack/attack_example.py -o out/Fij_01.csv \
+  out\PWSCUP2025_Pre_Data_for_Attack_01-05\A01.csv \
+  out\PWSCUP2025_Pre_Data_for_Attack_01-05\C01.csv \
+  out\PWSCUP2025_Pre_Data_for_Attack_01-05\D01.json
+```
+Note: `Fij_01.csv` has 100,000 records. The sample produced 66,575 positives (>10,000 limit), likely with many Type II errors (false negatives) due to thresholding.
 
-#### Chanh_C22_2_shuffled_K5
-stats_diff max_abs: 0.21683733490613305
-LR_asthma_diff max_abs: 0.8602104295357484
-KW_IND_diff max_abs: 0.11758596069278837
-Ci utility: 51.770578799183944 / 80
+## Ideas / Proposals
+- Proposal 0 (easy/efficient): limit positives to 10,000 using original score
+- Proposal 1 (Ci, moderate): limit to 10,000 via Hungarian algorithm in attackCi
+- Proposal 2 (Di, easy): raise confidence threshold for AttackDi
+- Proposal 3 (Ci+Di, moderate): add noise to Ci/Di answers and weight by noise
+- Proposal 4 (Di, hard): search ML model patterns by training variants and compare to target
+- Proposal 5 (Ci, moderate/efficient): mutual nearest neighbors (Ci→Ai and Ai→Ci)
+- Proposal 6 (Ci, moderate/efficient): extend 1-NN to k-NN
 
-#### Chanh_C22_3_shuffled_K5_nocat
-stats_diff max_abs: 0.16922688648679085
-LR_asthma_diff max_abs: 0.6842639995479921
-KW_IND_diff max_abs: 0.08309488556190758
-Ci utility: 57.88374683833037 / 80
+## Current Development Notes
+- Ci attack: extend output from 1-NN to k-NN
+- Di attack: output raw confidence or top-n confidences instead of 1/0
+- Combination examples:
+  - Weighted: use Ci_attack top-k and Di_attack top-n
+  - Logical: require Ci_attack==1 AND Di_attack==1
+  - Ranking: emit top 10,000 scored records
 
-## check
-check_csv.py out/test/C22_3_shuffled.csv out\sample_D22_1.json
+## new_attackDi_Ci (rank Di candidates by Ci distance and |pred - y|)
+Outputs top-N rows (default 1). Quick examples:
+```
+# Union of Pred and Conf (each top-10,000); Ci k=5; emit top 10,000
+python attack\new_attackDi_Ci.py \
+  out\PWSCUP2025_Pre_Data_for_Attack\A22.csv \
+  out\PWSCUP2025_Pre_Data_for_Attack\C22_fix.csv \
+  out\PWSCUP2025_Pre_Data_for_Attack\D22.json \
+  --pred-topk 10000 --conf-topk 10000 --mode union -k 5 --w-conf 1.0 --topn 10000 \
+  -o out\Fij_new_22.csv --out-rank out\Fij_new_22_rank.csv
+```
 
-## attack
-### create directory "PWSCUP2025_Pre_Data_for_Attack" in out/
-### unzip all "PWSCUP2025_Pre_Data_for_Attack_**" to "out/PWSCUP2025_Pre_Data_for_Attack"
+Heuristic for k-NN matching (Ci): take up to k nearest neighbors; match the closest pair first, then continue greedily among remaining unmatched items. Greedy tie-breaking by smaller ID is acceptable since we infer membership, not exact pairings.
 
-
-### attackCi is attack of "distance(between Ai and Ci common columns) based". 
-### attackDi is combination of "Prediction attack" and "Confidence attack".
-### example attack uses "distance", "Prediction" and "Confidence".(if >1.5, "member")
-
-## python attack/attack_example.py -o out/Fij_01.csv out\PWSCUP2025_Pre_Data_for_Attack_01-05\A01.csv out\PWSCUP2025_Pre_Data_for_Attack_01-05\C01.csv out\PWSCUP2025_Pre_Data_for_Attack_01-05\D01.json
-
-### Fij_01.csv consists of 100,000 records and SUM of inference is 66,575(higher than limitation/10,000).
-### There should be much Type two errors...
-
-## proposal of developments
-### example_Proposal0(easy/efficient): limit 1s(Trues) to 10,000.(use original score)
-### Ci_Proposal1(moderate): limit 1s(Trues) to 10,000.(in attackCi/ use hungarian algorithm)
-### Di_Proposal2(easy): make threshold (confidence of AttackDi) higher.
-### Ci_Di_Proposal3(moderate): introduce noise step in attack(let 1/0 answers in Ci/Di) and weight them by quantity of noise
-### Di_Proposal4(hard/scratch/efficient): explore all paterns of ML models(run learning on our code) and compare the target ML model.  
-### Ci_Proposal5(moderate/efficient): make Mutual NearestNeighbors(original: Ci to Ai nearest only, introduce Ai to Ci nearest)
-### Ci_Proposal6(moderate/scratch/efficient): extend NearestNeighbors to k(original: 1-NN only)
-
-
-## development
-### Ci_attack: extend output record(only 1-NN to k-NN)
-### Di_attack: change output(result(1/0) to original "Confidence" value or best n Confidence)
-### example_1: weight Ci_attack num_k values and Di_attack num_n values
-### example_2: Ci_attack==1 "and" Di_attack==1
-### example: output 10,000-ranked records
-
-### new_attackDi_Ci: score num_n Di_attack answers by Ci_attack distance
-### new_attackDi_Ci: output: 1st-ranked record
-
-## attack_development(Ci_attack)
-### development_version: attack\attack_Ci_ex.ipynb
-### python attack\attack_Ci_ex.py out\PWSCUP2025_Pre_Data_for_Attack\A01.csv out\PWSCUP2025_Pre_Data_for_Attack\C01.csv -o out\C01_inferred_ex.csv -k 1
-#### 1st column: times inferred by Ci_attack(overlapping), 2nd column: minimum distance from NN
-
-### development_version: ex_to_normal.ipynb
-### python attack\ex_to_normal.py out\C01_inferred_ex.csv out\C01_inferred.csv
-#### convert C01_inferred_ex.csv to C01_inferred.csv(no overlapping)
-
-## attack_development(Di_attack)
-### development_version: attack\attack_Di.ipynb
-### development_version: attack\attack_Di_ex.ipynb
-"""
-Usage examples:
-    # Minimum run: Pred=threshold 0.5 (default), Conf=threshold 0.1 (default)
-    python attack_Di_ex.py D15.json A15.csv
-
-    # Apply a common threshold of 0.5 to both Pred and Conf
-    python attack_Di_ex.py D15.json A15.csv --threshold 0.5
-
-    # Use different thresholds: Pred=0.4, Conf=0.08
-    python attack_Di_ex.py D15.json A15.csv --pred-threshold 0.4 --conf-threshold 0.08
-
-    # Pred selects exactly top-10,000 rows, Conf selects 10% of rows
-    python attack_Di_ex.py D15.json A15.csv --pred-topk 10000 --conf-pos-ratio 0.10
-
-    # Both Pred and Conf select top-10,000 rows
-    python attack_Di_ex.py D15.json A15.csv --pred-topk 10000 --conf-topk 10000
-
-    # Change output file names
-    python attack_Di_ex.py D15.json A15.csv --out-pred pred_15.csv --out-conf conf_15.csv
-
-Options:
-    model_json            Path to trained XGBoost model in JSON format (e.g., D15.json)
-    Ai_csv                Path to Ai data CSV (e.g., A15.csv)
-
-    --threshold T         (Legacy) Apply the same threshold T to both Pred and Conf.
-                          Ignored if specific thresholds or topk/ratio are provided.
-
-    --pred-threshold TP   Threshold for Pred_Attack (default=0.5).
-                          Only used if --pred-topk/--pred-pos-ratio are not set.
-    --pred-topk K         Pred_Attack: select exactly K rows as members (overrides threshold).
-    --pred-pos-ratio R    Pred_Attack: select round(R*N) rows as members (when topk not set).
-
-    --conf-threshold TC   Threshold for Conf_Attack (default=0.1, |p - y| <= TC).
-                          Only used if --conf-topk/--conf-pos-ratio are not set.
-    --conf-topk K         Conf_Attack: select exactly K rows with smallest |p - y|.
-    --conf-pos-ratio R    Conf_Attack: select round(R*N) rows (when topk not set).
-
-    --out-pred PATH       Output file for Pred_Attack results
-                          (default: inferred_membership1_ex.csv)
-    --out-conf PATH       Output file for Conf_Attack results
-                          (default: inferred_membership2_ex.csv)
-
+## attack_allCi_allDi_hungarian (sum of Ci Hungarian distance and Di |pred - y|)
+Ranks all Ai rows by: Hungarian matched distance (Ci→Ai) + |pred - y| from Di. Selects top 10,000 without Di candidate filtering.
+```
+python attack\attack_allCi_allDi_hungarian.py \
+  out\PWSCUP2025_Pre_Data_for_Attack\A22.csv \
+  out\PWSCUP2025_Pre_Data_for_Attack\C22_fix.csv \
+  out\PWSCUP2025_Pre_Data_for_Attack\D22.json \
+  --hung-mode knn -k 300 --topn 10000 \
+  --w-dist 1.0 --w-conf 1.0 --auto-wdist \
+  -o out\Fij_all_hungarian_22.csv \
+  --out-rank out\Fij_all_hungarian_22_rank.csv \
+  --out-map out\C22_matchmap_all_hungarian.csv
+```
 Notes:
-    - Priority order within each attack: topk > pos_ratio > threshold.
-    - Outputs are 1-column CSV files (0/1 values, no header, no index).
-    - Features are automatically reindexed to match model.feature_names;
-      missing columns are filled with zeros.
-"""
+- Ci distance uses unified Manhattan distance on common columns (numeric scaled, categorical one-hot) and Hungarian min-sum matching. Unmatched Ai get a large fill cost.
+- Di distance is |pred - y| from Conf_Attack.
+- Combined cost per pair = `w_dist * Ci_distance + w_conf * |pred - y|` (smaller is better).
+- `--auto-wdist` scales `w_dist` by 1/(N+2*C) using counts of shared numeric (N) and categorical (C) columns.
 
-### k=5まで最近傍点を取り、k=1で最も近いペアをマッチ、k=2で余りから最も近いペアでマッチ……
-### idが若い順にマッチさせてよい(対応を推定するわけではなくメンバーを推定するため)
+## Error Fix Utilities
+```
+python util/check_and_fix_csv.py \
+  out\PWSCUP2025_Pre_Data_for_Attack\C01.csv \
+  data\pre_columns_range.json \
+  out\PWSCUP2025_Pre_Data_for_Attack\C01_fix.csv \
+  --report fix_report.csv
 
-## error_fix
-###  python util/check_and_fix_csv.py out\PWSCUP2025_Pre_Data_for_Attack\C01.csv data\pre_columns_range.json out\PWSCUP2025_Pre_Data_for_Attack\C01_fix.csv --report fix_report.csv
-#### create multi version of check_and_fix_csv.py
-#### python multi_check_and_fix.py
+# Batch version
+python util\multi_check_and_fix.py
+```
 
-### about team 15's ML model
-#### Their AGE data is splitted down to 9 BINs
-#### python analysis/validate_model_json.py out\PWSCUP2025_Pre_Data_for_Attack\D15.json
-#### [OK]  out\PWSCUP2025_Pre_Data_for_Attack\D15.json: OK (#features=27, target=stroke_flag, attrs_src=learner)
-#### PWSCUP manager fixed attack code(attack_Di)
+## Notes on Team 15 Model
+- AGE is binned into 9 categories.
+```
+python analysis/validate_model_json.py out\PWSCUP2025_Pre_Data_for_Attack\D15.json
+# [OK] ... D15.json: OK (#features=27, target=stroke_flag, attrs_src=learner)
+```
+- PWSCUP manager fixed Attack_Di code.
 
-## evaluation of anonymity
-### python evaluation\gen_ans.py out\PWSCUP2025_Pre_Data_for_Attack\A22.csv in\B22_3.csv -o out\Z22.csv
-### python evaluation\check_ans.py out\Z22.csv out\C01_inferred_ex_greedy.csv
-#### 1008pt:greedy attack
-### python attack/attack_example.py -o out/example_22.csv out\PWSCUP2025_Pre_Data_for_Attack\A22.csv out\PWSCUP2025_Pre_Data_for_Attack\C22_fix.csv out\PWSCUP2025_Pre_Data_for_Attack\D22.json
-#### 6527pt: sample attack
-##### Warning: the result of sample attack is not limited to 10,000 1s on Fij.csv(answer).
-##### simple fixation created
-##### python util\fix_Fijcsv_random.py out\example_22.csv out\example_22_fix.csv
-#### fixed score of example_22: 1013pt
+## Evaluate Anonymity / Sample Scores
+```
+# Build reference answers from A and B
+python evaluation\gen_ans.py out\PWSCUP2025_Pre_Data_for_Attack\A22.csv in\B22_3.csv -o out\Z22.csv
 
-*** you can choose attack variants below ***
-# Ci_attack(original/extended/greedy)
-## python attack\attack_Ci.py out\PWSCUP2025_Pre_Data_for_Attack\A22.csv out\PWSCUP2025_Pre_Data_for_Attack\C22_fix.csv -o out\C22_inferred.csv
-## python attack\attack_Ci_ex.py out\PWSCUP2025_Pre_Data_for_Attack\A22.csv out\PWSCUP2025_Pre_Data_for_Attack\C22_fix.csv -o out\C22_inferred_ex.csv -k 1
-## python attack\attack_Ci_ex_greedy.py out\PWSCUP2025_Pre_Data_for_Attack\C22_fix.csv out\PWSCUP2025_Pre_Data_for_Attack\A22.csv -m nn -k 5 -o out\C22_inferred_ex_greedy_k5_nn.csv
-## python attack\attack_Ci_ex_greedy.py out\PWSCUP2025_Pre_Data_for_Attack\C22_fix.csv out\PWSCUP2025_Pre_Data_for_Attack\A22.csv -m greedy -k 20  -o out\C22_inferred_ex_greedy_k20_greedy.csv --out-map out\C22_matchmap_k20.csv
+# Compare with inferred Ci results
+python evaluation\check_ans.py out\Z22.csv out\C01_inferred_ex_greedy.csv
 
-# Di_attack(original/extended)
-## python attack\attack_Di.py out\PWSCUP2025_Pre_Data_for_Attack\D22.json out\PWSCUP2025_Pre_Data_for_Attack\A22.csv
-## python attack\attack_Di_ex.py out\PWSCUP2025_Pre_Data_for_Attack\D22.json out\PWSCUP2025_Pre_Data_for_Attack\A22.csv [--pred-threshold 0.5] [--pred-topk 10000] [--pred-pos-ratio 0.10] [--conf-threshold 0.1] [--conf-topk 10000] [--conf-pos-ratio 0.10] --out-pred out/inferred_membership1_22_ex.csv --out-conf out/inferred_membership2_22_ex.csv
+# Sample attack (may exceed 10,000-positives limit)
+python attack/attack_example.py -o out/example_22.csv \
+  out\PWSCUP2025_Pre_Data_for_Attack\A22.csv \
+  out\PWSCUP2025_Pre_Data_for_Attack\C22_fix.csv \
+  out\PWSCUP2025_Pre_Data_for_Attack\D22.json
 
-# combination_attack(original/limit)
-## python attack\attack_example_ex.py --Ai_csv out\PWSCUP2025_Pre_Data_for_Attack\A22.csv -o out\Fij_22.csv out\C22_inferred.csv out\inferred_membership1_22_ex.csv out\inferred_membership2_22_ex.csv
-## python attack\attack_example_ex.py --Ai_csv out\PWSCUP2025_Pre_Data_for_Attack\A22.csv -o out\Fij_22.csv -l 10000 out\C22_inferred.csv out\inferred_membership1_22_ex.csv out\inferred_membership2_22_ex.csv
+# Quick fix to cap positives randomly
+python util\fix_Fijcsv_random.py out\example_22.csv out\example_22_fix.csv
+```
+Reference scores: greedy=1008pt; sample attack=6527pt; fixed sample=1013pt.
 
-## batch
-### attack\multi_attack.ipynb
-### attack\multi_attack.py
+## Attack Variants
+Choose from the following implementations.
+
+### Ci attack (original / extended / greedy)
+```
+python attack\attack_Ci.py out\PWSCUP2025_Pre_Data_for_Attack\A22.csv out\PWSCUP2025_Pre_Data_for_Attack\C22_fix.csv -o out\C22_inferred.csv
+
+python attack\attack_Ci_ex.py out\PWSCUP2025_Pre_Data_for_Attack\A22.csv out\PWSCUP2025_Pre_Data_for_Attack\C22_fix.csv -o out\C22_inferred_ex.csv -k 1
+
+python attack\attack_Ci_ex_greedy.py out\PWSCUP2025_Pre_Data_for_Attack\C22_fix.csv out\PWSCUP2025_Pre_Data_for_Attack\A22.csv -m nn -k 5 -o out\C22_inferred_ex_greedy_k5_nn.csv
+
+python attack\attack_Ci_ex_greedy.py out\PWSCUP2025_Pre_Data_for_Attack\C22_fix.csv out\PWSCUP2025_Pre_Data_for_Attack\A22.csv -m greedy -k 20 -o out\C22_inferred_ex_greedy_k20_greedy.csv --out-map out\C22_matchmap_k20.csv
+```
+
+### Di attack (original / extended)
+```
+python attack\attack_Di.py out\PWSCUP2025_Pre_Data_for_Attack\D22.json out\PWSCUP2025_Pre_Data_for_Attack\A22.csv
+
+python attack\attack_Di_ex.py \
+  out\PWSCUP2025_Pre_Data_for_Attack\D22.json \
+  out\PWSCUP2025_Pre_Data_for_Attack\A22.csv \
+  [--pred-threshold 0.5] [--pred-topk 10000] [--pred-pos-ratio 0.10] \
+  [--conf-threshold 0.1] [--conf-topk 10000] [--conf-pos-ratio 0.10] \
+  --out-pred out/inferred_membership1_22_ex.csv \
+  --out-conf out/inferred_membership2_22_ex.csv
+```
+
+### Combination attack
+```
+python attack\attack_example_ex.py --Ai_csv out\PWSCUP2025_Pre_Data_for_Attack\A22.csv -o out\Fij_22.csv \
+  out\C22_inferred.csv out\inferred_membership1_22_ex.csv out\inferred_membership2_22_ex.csv
+
+python attack\attack_example_ex.py --Ai_csv out\PWSCUP2025_Pre_Data_for_Attack\A22.csv -o out\Fij_22.csv -l 10000 \
+  out\C22_inferred.csv out\inferred_membership1_22_ex.csv out\inferred_membership2_22_ex.csv
+```
+
+## Batch Runs
+- `attack\multi_attack.ipynb`
+- `attack\multi_attack.py`
+
+## Submission Utility
+- `util\csv_maker_attack.ipynb`
+  - Note: Teams 03/12 used original Bi; CSV was edited using Ci_attack (Original) results.

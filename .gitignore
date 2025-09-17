@@ -15,7 +15,15 @@ venv.bak/
 *.egg-info/
 dist/
 build/
+.vscode
+.env
 
 # input / output
-in/
-out/
+in/**/*.csv
+out/**/*.csv
+out/**/*.json
+
+# Codex CLI scratch artifacts
+/_*_nb.py
+/TEMP_*
+/tmp_*

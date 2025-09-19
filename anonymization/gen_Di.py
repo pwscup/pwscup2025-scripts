@@ -12,6 +12,8 @@ from xgboost import XGBClassifier
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(current_dir, '..', 'analysis'))
 from xgbt_train import build_X
+sys.path.append(os.path.join(current_dir, '..', 'util'))
+from pws_data_format import BiDataFrame, CiDataFrame
 
 
 TARGET = "stroke_flag"
@@ -74,8 +76,8 @@ class TrainDiFromBiCi(DiGenBase):
         # print(None)
 
     def fit(self, path_to_Bi_csv, path_to_Ci_csv):
-        Bi = pd.read_csv(path_to_Bi_csv, dtype=str, keep_default_na=False)
-        Ci = pd.read_csv(path_to_Ci_csv, dtype=str, keep_default_na=False)
+        Bi = BiDataFrame.read_csv(path_to_Bi_csv)
+        Ci = CiDataFrame.read_csv(path_to_Ci_csv)
         
         # BiとCiを結合して訓練データを作る
         raw_data = pd.concat([Bi, Ci], ignore_index=True)

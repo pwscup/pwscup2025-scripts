@@ -34,19 +34,19 @@
     "encounter_count": {
       "type": "number",
       "min": 4.0,
-      "max": 1133.0,
+      "max": 1211.0,
       "max_decimal_places": 0
     },
     "num_procedures": {
       "type": "number",
       "min": 0.0,
-      "max": 2472.0,
+      "max": 2442.0,
       "max_decimal_places": 0
     },
     "num_medications": {
       "type": "number",
       "min": 0.0,
-      "max": 6019.0,
+      "max": 7195.0,
       "max_decimal_places": 0
     },
     "num_immunizations": {
@@ -58,13 +58,13 @@
     "num_allergies": {
       "type": "number",
       "min": 0.0,
-      "max": 16.0,
+      "max": 17.0,
       "max_decimal_places": 0
     },
     "num_devices": {
       "type": "number",
       "min": 0.0,
-      "max": 164.0,
+      "max": 160.0,
       "max_decimal_places": 0
     },
     "asthma_flag": {
@@ -93,26 +93,26 @@
     },
     "mean_systolic_bp": {
       "type": "number",
-      "min": 37.32,
-      "max": 168.62,
+      "min": 37.22,
+      "max": 172.85,
       "max_decimal_places": 2
     },
     "mean_diastolic_bp": {
       "type": "number",
-      "min": 5.99,
-      "max": 125.36,
+      "min": 1.78,
+      "max": 126.17,
       "max_decimal_places": 2
     },
     "mean_bmi": {
       "type": "number",
-      "min": 2.73,
-      "max": 75.01,
+      "min": 2.97,
+      "max": 73.58,
       "max_decimal_places": 2
     },
     "mean_weight": {
       "type": "number",
-      "min": 5.75,
-      "max": 208.1,
+      "min": 4.55,
+      "max": 196.7,
       "max_decimal_places": 2
     }
   }

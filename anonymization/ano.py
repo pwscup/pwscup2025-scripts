@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import sys
+import sys, os
 import argparse
 import random
 from typing import List
@@ -9,6 +9,10 @@ from typing import List
 import numpy as np
 import pandas as pd
 
+# モジュールの相対参照制限を強制的に回避
+current_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(current_dir, '..', 'util'))
+from pws_data_format import BiDataFrame, CiDataFrame
 
 def mutate_categorical(series: pd.Series, p: float) -> pd.Series:
     """非空セルのみ、確率 p で列内の“別の値”に置き換え。"""
@@ -123,7 +127,7 @@ def flip_flag_with_prob(df: pd.DataFrame, col: str, p: float) -> None:
 
 def process_age_add(df: pd.DataFrame, col: str = "AGE",
                     lo: int = -2, hi: int = 2,
-                    min_age: int = 0, max_age: int = 120) -> None:
+                    min_age: int = 2, max_age: int = 110) -> None:
     """AGE列：非空のみ整数ノイズ（[lo,hi]）を加算し、[min_age,max_age]でクランプ。
        空欄はそのまま。"""
     if col not in df.columns:
@@ -153,8 +157,8 @@ def main():
         np.random.seed(args.seed)
         random.seed(args.seed)
 
-    # 文字列で読み込み（空欄を保持）
-    df = pd.read_csv(args.input_csv, dtype=str, keep_default_na=False)
+    # Biを読み込み
+    df = BiDataFrame.read_csv(args.input_csv)
 
     # ---- カテゴリ列のランダム置換 ----
     if "GENDER" in df.columns:
@@ -165,7 +169,7 @@ def main():
         df["ETHNICITY"] = mutate_categorical(df["ETHNICITY"], p=0.13)
 
     # ---- AGE（整数ノイズ; 空欄はそのまま）----
-    process_age_add(df, col="AGE", lo=-2, hi=2, min_age=0, max_age=120)
+    process_age_add(df, col="AGE", lo=-2, hi=2, min_age=2, max_age=110)
 
     # ---- 整数ノイズ付加 ----
     process_int_column(df, "encounter_count",  lo=-10, hi=10)
@@ -190,7 +194,8 @@ def main():
     process_float_with_blanks(df, "mean_bmi",   lo=-6.0,  hi=6.0,  decimals=2)
 
     # ---- 出力 ----
-    df.to_csv(args.output_csv, index=False)
+    Ci_df = CiDataFrame(df)
+    Ci_df.to_csv(args.output_csv)
 
 
 if __name__ == "__main__":

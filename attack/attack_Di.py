@@ -108,6 +108,20 @@ class Conf_Attack(Attack_Di_Base):
 
         return inferred
 
+class TopConfAttack(Attack_Di_Base):
+    """
+    モデルの確信度top1000の行をmemberと推定
+    """
+    def infer(self, path_to_Ai_csv):
+        super().infer(path_to_Ai_csv)
+
+        pred = self.xgbt_model.predict(xgb.DMatrix(self.X))
+        confidence = (-1) * pd.DataFrame(pred-self.y, columns=["conf"]).abs() 
+        inferred = pd.DataFrame(0, index=range(pred.shape[0]), columns=["inferred"])
+        inferred.loc[confidence["conf"].nlargest(10000).index, "inferred"] = 1
+        self.inferred = inferred
+
+        return inferred
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description="")
@@ -122,3 +136,7 @@ if __name__ == "__main__":
     attacker = Conf_Attack(args.model_json)
     pred = attacker.infer(args.Ai_csv)
     attacker.save_inferred("inferred_membership2.csv")
+
+    attacker = TopConfAttack(args.model_json)
+    pred = attacker.infer(args.Ai_csv)
+    attacker.save_inferred("inferred_membership3.csv")

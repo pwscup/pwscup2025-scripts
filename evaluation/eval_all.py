@@ -35,7 +35,7 @@ def eval_Ci_df_utility(Bi_df:pd.DataFrame, Ci_df:pd.DataFrame,
     print(f"KW_IND_diff max_abs: {KW_IND_diff_max_abs}")
 
     # 重み付きutility
-    Ci_utility = 40 * (1-stats_diff_max_abs) + 20 * (1-LR_asthma_diff_max_abs) + 20 * (1-KW_IND_diff_max_abs)
+    Ci_utility = 40 * max(0, 1-stats_diff_max_abs) + 20 * (1-LR_asthma_diff_max_abs) + 20 * (1-KW_IND_diff_max_abs)
     print(f"Ci utility: {Ci_utility} / 80")
     
 def eval_Ci_utility(path_to_Bi_csv:str, path_to_Ci_csv:str, 
@@ -57,7 +57,7 @@ def eval_Ci_utility(path_to_Bi_csv:str, path_to_Ci_csv:str,
     print(f"KW_IND_diff max_abs: {KW_IND_diff_max_abs}")
 
     # 重み付きutility
-    Ci_utility = 40 * (1-stats_diff_max_abs) + 20 * (1-LR_asthma_diff_max_abs) + 20 * (1-KW_IND_diff_max_abs)
+    Ci_utility = 40 * max(0, 1-stats_diff_max_abs) + 20 * (1-LR_asthma_diff_max_abs) + 20 * (1-KW_IND_diff_max_abs)
     print(f"Ci utility: {Ci_utility} / 80")
 
     return Ci_utility

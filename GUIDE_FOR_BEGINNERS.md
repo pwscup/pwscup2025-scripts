@@ -52,7 +52,7 @@ python anonymization/ano.py data/HI_10k.csv HI_10k_anon.csv
 値域確認スクリプト check_csv.py を使い、生成した匿名データが適切な値域内にあることを確認します。
 
 ```bash
-python util/check_csv.py HI_10k_anon.csv data/columns_range.json.json
+python util/check_csv.py HI_10k_anon.csv data/columns_range.json
 ```
 
 ##### 値域定義ファイル（columns_range.json）の内容
@@ -172,7 +172,7 @@ python attack/attack_Ci.py data/HI_100K.csv HI_10k_anon.csv -o attack_ci_result.
 
 **Di（機械学習モデル）への攻撃:**
 ```bash
-python attack/attack_Di.py data/HI_100K.csv HI_10k_anon.json -o attack_di_result.csv
+python attack/attack_Di.py data/HI_100K.csv HI_10k_anon.json
 ```
 
 ### 攻撃の仕組み

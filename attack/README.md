@@ -28,9 +28,24 @@
 ## 攻撃者クラス `Conf_Attack`
 モデルが確信を持って正答した行をメンバーと推定する。インスタンス作成時により小さいthresholdを指定することで、要求する確信度を高められる。
 
+## 攻撃者クラス `TopConfAttack` (9/18追加)
+確信度上位10000行をmemberと推定
+
 # `attack_Ci.py`: `mia.py`と同等
  `mia.py`を`attack_Di.py`と同様の書き方に変更したもの。
 
 # `attack_example.py`: `Fij`生成例
 - CiとDi両方を使って、Aiの各行がBiに属するかどうかを推定する攻撃のサンプル。
 - `attack_Ci.py`と`attack_Di.py`に実装されている攻撃手法でそれぞれ攻撃し、多数決で推定
+
+# `make_attack_submission.py`: 攻撃フェーズ提出ファイル作成スクリプト例 (9/18追加)
+- TopConfAttackで攻撃と攻撃フェーズ提出用zipファイル作成を一括で行うスクリプトの例。一部を改変して使うことを想定して、コードの説明をコメントで詳しめに書いた。
+- 利用法: `make_attack_submission.py [-h] [--overwrite] i indir outdir`
+- 入力: 
+    - `i`: 自分のチームのID
+    - `indir`: 攻撃対象のデータ(A, C, C)が格納されたディレクトリへのパス
+    - `outdir`: 攻撃結果格納ディレクトリへのパス
+    - `-h`: (任意)ヘルプを表示
+    - `-o, --overwright`: (任意)`outdir`が既に存在していても、上書きして攻撃結果を保存
+- 出力: codabenchに提出可能なzipファイル(id.txtを含み、F99.zipのような名前)を`outdir`に配置
+- 備考: 不提出チームに対する対応のため、本戦攻撃フェーズ直前に微修正する可能性あり

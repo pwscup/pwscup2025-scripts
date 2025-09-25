@@ -4,3 +4,4 @@ scipy
 xgboost
 scikit-learn
 statsmodels
+DataSynthesizer

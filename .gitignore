@@ -20,6 +20,7 @@ build/
 
 # input / output
 in/**/*.csv
+in/**/*.json
 out/**/*.csv
 out/**/*.json
 

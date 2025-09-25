@@ -6,3 +6,4 @@ scikit-learn
 statsmodels
 DataSynthesizer
 ipykernel
+tqdm

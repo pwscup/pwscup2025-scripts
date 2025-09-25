@@ -110,7 +110,7 @@ class Conf_Attack(Attack_Di_Base):
 
 class TopConfAttack(Attack_Di_Base):
     """
-    モデルの確信度top1000の行をmemberと推定
+    モデルの確信度top10000の行をmemberと推定
     """
     def infer(self, path_to_Ai_csv):
         super().infer(path_to_Ai_csv)

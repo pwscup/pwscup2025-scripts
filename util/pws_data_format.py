@@ -360,7 +360,7 @@ class CiDataFrame(BiDataFrame):
 
 class FFjDataFrame(pd.DataFrame):
     # フォーマットを規定する定数
-    UNSUBMITTED_TEAMS: List[int] = [] # TODO: 加工フェーズが終わったら埋める
+    UNSUBMITTED_TEAMS: List[int] = [21]
     TEAM_NUM = 24
     ROW_NUM = 100000
     ONE_NUM = 10000

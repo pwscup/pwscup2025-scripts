@@ -2,12 +2,12 @@ import re
 import os
 import json
 from decimal import Decimal, InvalidOperation
+from typing import List
 
 import pandas as pd
 
 from check_and_fix_csv import to_decimal_maybe, quantize_to_places
 
-# COLUMNS = []
 YMD_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 def get_col_specs():
@@ -355,3 +355,72 @@ class CiDataFrame(BiDataFrame):
             # except*ブロックで予期せぬエラーが発生した時
             print(f"フォーマットの修正を試みましたが失敗しました:")
             raise e
+
+
+class FFjDataFrame(pd.DataFrame):
+    # フォーマットを規定する定数
+    UNSUBMITTED_TEAMS: List[int] = [21]
+    TEAM_NUM = 24
+    ROW_NUM = 100000
+    ONE_NUM = 10000
+
+    def __init__(self, *args, j, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.check_format(j)
+
+    def check_format(self, j):
+        """
+        FFjフォーマットをチェック。
+        チェックの時点で列名がついている可能性も考えて、列名は参照しない。
+        self.valuesで値だけをnumpy配列として呼び出して使う。
+        """
+        errors = []
+
+        row_num = self.shape[0]
+        if row_num != __class__.ROW_NUM:
+            errors.append(RowNumError(f"期待される行数は{__class__.ROW_NUM}, 実際の行数は{row_num}"))
+        
+        col_num = self.shape[1]
+        if col_num != __class__.TEAM_NUM:
+            errors.append(ColumnsError(f"期待される列数は{__class__.TEAM_NUM}, 実際の列数は{col_num}"))
+
+        # "0", "1", ""(空白)以外がないかチェック
+        mask = self.map(lambda x: str(x) in ["0", "1", ""])
+        if (~mask).any().any():
+            errors.append(ColSpecError(f"0, 1, 空白以外の文字があります: {self[~mask]}"))
+
+        for i in range(__class__.TEAM_NUM):
+            """
+            ループindex iは対応するチームIDよりも1小さい
+            """
+            # 自チームに対応する列をチェック
+            if (i+1) == int(j):
+                if (not (self.values[:, i] == "0").all()) and (not (self.values[:, i] == "").all()):
+                    errors.append(ColSpecError(f"自チーム列{i}は0または空白で埋めてください"))
+                
+                continue
+            
+            # 未提出チームに対応する列をチェック
+            if (i+1) in __class__.UNSUBMITTED_TEAMS:
+                if (not (self.values[:, i] == "0").all()) and (not (self.values[:, i] == "").all()):
+                    errors.append(ColSpecError(f"未提出チーム列{i}は0または空白で埋めてください"))
+
+                continue
+
+            # 正常な他チームに対応する列をチェック
+            if (self.values[:,i]=="1").sum() != __class__.ONE_NUM:
+                errors.append(ColSpecError(f"列{i}の1の数が不正です。期待される1の数は{__class__.ONE_NUM}, 実際の1の数は{(self.values[:,i]=="1").sum()}"))
+
+        if errors:
+            raise ExceptionGroup("フォーマットに不正が見つかりました", errors)
+
+    def to_csv(self, path_to_csv):
+        """
+        indexと列名を消して保存
+        """
+        super().to_csv(path_to_csv, index=False, header=False)
+
+    @classmethod
+    def read_csv(cls, path_to_csv):
+        return pd.read_csv(path_to_csv, dtype=str, 
+                           keep_default_na=False, header=None)
